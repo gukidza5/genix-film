@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const FONT = '"Leelawadee UI","Tahoma",sans-serif';
+const seg = new Intl.Segmenter('th', { granularity: 'word' });
+
+// ตัดบรรทัดตามคำไทย
+function wrap(ctx, text, maxW) {
+  const lines = [];
+  let cur = '';
+  for (const { segment } of seg.segment(text || '')) {
+    if (ctx.measureText(cur + segment).width > maxW && cur) { lines.push(cur.trim()); cur = ''; }
+    cur += segment;
+  }
+  if (cur.trim()) lines.push(cur.trim());
+  return lines;
+}
+
+function box(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
+}
+
+// ข้อความลอยบนจอ: ขาวขอบดำหนา
+function stroke(ctx, l, x, y) { ctx.strokeText(l, x, y); ctx.fillText(l, x, y); }
+
+function render({ kind, speaker, text, sub, w = 1080, h = 1920, price, cta }) {
+  const c = document.getElementById('c');
+  c.width = w; c.height = h; // ตั้งขนาดใหม่ = ล้างแคนวาสไปด้วย
+  const ctx = c.getContext('2d');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+  const k = Math.min(w, h) / 1080, cx = w / 2;
+
+  if (kind === 'promo') { // คลิปขายของ: คำโปรยตัวใหญ่ด้านบน + ซับด้านล่าง
+    if (sub) {
+      ctx.font = `900 ${96 * k}px ${FONT}`;
+      const L = wrap(ctx, sub, w * 0.88), lh = 118 * k, top = h * 0.07;
+      ctx.lineWidth = 16 * k; ctx.strokeStyle = '#000'; ctx.fillStyle = '#ffe14d';
+      L.forEach((l, i) => stroke(ctx, l, cx, top + i * lh));
+    }
+    if (text) {
+      ctx.font = `bold ${56 * k}px ${FONT}`;
+      const L = wrap(ctx, text, w * 0.84), lh = 76 * k, top = h * 0.86 - (L.length - 1) * lh;
+      ctx.fillStyle = 'rgba(0,0,0,.6)';
+      box(ctx, w * 0.05, top - 24 * k, w * 0.9, L.length * lh + 40 * k, 26 * k);
+      ctx.fillStyle = '#fff';
+      L.forEach((l, i) => ctx.fillText(l, cx, top + i * lh));
+    }
+    return c.toDataURL('image/png');
+  }
+
+  if (kind === 'card') { // ฉากปิด: ชื่อสินค้า ราคา ปุ่มชวนกด (รูปสินค้าจริงวางไว้ใต้ภาพนี้ด้วย ffmpeg)
+    const y0 = h * 0.66;
+    ctx.fillStyle = 'rgba(255,255,255,.96)'; box(ctx, 0, y0, w, h - y0, 0);
+    ctx.font = `bold ${52 * k}px ${FONT}`; ctx.fillStyle = '#222';
+    const L = wrap(ctx, text, w * 0.88).slice(0, 2);
+    L.forEach((l, i) => ctx.fillText(l, cx, y0 + 36 * k + i * 70 * k));
+    let y = y0 + 60 * k + L.length * 70 * k;
+    if (price) { ctx.font = `900 ${96 * k}px ${FONT}`; ctx.fillStyle = '#ee4d2d'; ctx.fillText(price, cx, y); y += 130 * k; }
+    ctx.fillStyle = '#ee4d2d'; box(ctx, w * 0.15, y, w * 0.7, 110 * k, 55 * k);
+    ctx.font = `bold ${54 * k}px ${FONT}`; ctx.fillStyle = '#fff';
+    ctx.fillText(cta || 'กดตะกร้าเลย', cx, y + 22 * k, w * 0.64);
+    return c.toDataURL('image/png');
+  }
+
+  if (kind === 'caption' && !text) {
+    // ช็อตรีแอ็กชันไม่มีบท → ไม่มีซับ (ภาพใสทั้งแผ่น)
+  } else if (kind === 'caption') {
+    ctx.font = `bold 58px ${FONT}`;
+    const lines = wrap(ctx, text, 900);
+    const lh = 80, top = 1480 - (lines.length - 1) * lh;
+    ctx.fillStyle = 'rgba(0,0,0,.62)';
+    box(ctx, 60, top - (speaker ? 80 : 30), 960, lines.length * lh + (speaker ? 110 : 60), 28);
+    if (speaker) { ctx.font = `bold 44px ${FONT}`; ctx.fillStyle = '#ffd34d'; ctx.fillText(speaker, 540, top - 62); }
+    ctx.font = `bold 58px ${FONT}`; ctx.fillStyle = '#fff';
+    lines.forEach((l, i) => ctx.fillText(l, 540, top + i * lh));
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 0, 900);
+    g.addColorStop(0, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 1080, 900);
+    ctx.font = `900 110px ${FONT}`;
+    const lines = wrap(ctx, text, 980);
+    ctx.lineWidth = 14; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000'; ctx.fillStyle = '#fff';
+    lines.forEach((l, i) => { ctx.strokeText(l, 540, 140 + i * 140); ctx.fillText(l, 540, 140 + i * 140); });
+    ctx.font = `bold 64px ${FONT}`;
+    const y = 160 + lines.length * 140;
+    ctx.fillStyle = '#e11d48'; box(ctx, 240, y, 600, 100, 50);
+    ctx.fillStyle = '#fff'; ctx.fillText(sub || '', 540, y + 14, 560);
+  }
+  return c.toDataURL('image/png');
+}
+</script>

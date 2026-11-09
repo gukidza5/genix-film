@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>KNF · สรุปข่าว</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css">
+<style>
+  textarea { width:100%; box-sizing:border-box; resize:vertical; }
+  #text { min-height:150px; } #spec { min-height:260px; font-family:Consolas,monospace; font-size:12px; } #cap { min-height:90px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .row label { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
+  .hint { color:var(--mut); font-size:12px; margin:6px 0 0; }
+  .out { display:grid; grid-template-columns:200px 1fr; gap:16px; align-items:start; }
+  .out video { width:200px; aspect-ratio:9/16; border-radius:12px; background:#000; }
+  .face { width:44px; height:44px; border-radius:50%; background:#0d1022 center/cover no-repeat; border:1px dashed #556; display:inline-grid; place-items:center; color:#889; font-size:9px; text-align:center; cursor:pointer; vertical-align:middle; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><span>📰</span><b>KNF</b><small>NEWS</small></div>
+  <nav>
+    <a href="index.html">🎞️ KNF Film <em>หนังสั้น</em></a>
+    <a href="shopee.html">🛒 คลิปขายของ <em>Shopee</em></a>
+    <a href="shopee.html?shop=tiktok">🎵 คลิปขายของ <em>TikTok</em></a>
+    <a class="on">📰 สรุปข่าว <em>Reels</em></a>
+    <a href="post.html">📤 โพสต์ + ปักตะกร้า <em>อัตโนมัติ</em></a>
+    <a href="live.html">🔴 ไลฟ์ขายของ <em>TikTok</em></a>
+  </nav>
+  <div class="foot">การ์ตูนเวกเตอร์ 1 นาที</div>
+</aside>
+
+<main>
+  <section class="card head">
+    <div class="ico">📰</div>
+    <div><h1>สรุปข่าว 1 นาที <span class="pill">Facebook Reels</span></h1>
+      <p>วางข่าวจริง → Meta เขียนบท → ตรวจ/แก้ → ทำคลิปการ์ตูนเวกเตอร์ + เสียง → โพสต์ลง Reels</p></div>
+  </section>
+
+  <section class="card">
+    <h3>1. เนื้อข่าว</h3>
+    <textarea id="text" placeholder="วางลิงก์ข่าว (เช่น https://women.kapook.com/view/...) แล้วกดปุ่มได้เลย แอปดึงเนื้อข่าวเอง · หรือก๊อปเนื้อข่าวจากสำนักข่าวมาวางก็ได้"></textarea>
+    <div class="row"><label style="flex:1">ลิงก์เพจที่จะโพสต์ <input id="fbPage" style="flex:1;min-width:280px" placeholder="https://www.facebook.com/ชื่อเพจ (ว่าง = โปรไฟล์ที่ล็อกอิน)"></label></div>
+    <div class="row"><label><input type="checkbox" id="realPost"> โพสต์จริง (ไม่ติ๊ก = โหมดทดลอง บอทหยุดก่อนกดเผยแพร่)</label></div>
+    <div class="row"><button id="btnAll" class="primary">⚡ ทำรวดเดียวจนโพสต์</button><button id="btnScript">✍️ เขียนบทอย่างเดียว</button>
+      <span class="hint">รวดเดียว = เขียนบท → ทำคลิป → โพสต์ Reels · ถ้าตัวเลขบนจอไม่มีในเนื้อข่าว จะหยุดไม่โพสต์</span></div>
+  </section>
+
+  <section class="card">
+    <h3>2. ตรวจบท (แก้ได้)</h3>
+    <textarea id="spec" placeholder='{"title":"","source":"","shots":[...]} — วางบทเองก็ได้'></textarea>
+    <p class="hint">ฉาก: intro arrest charges map money personal freeze court sorry cta · emo: ปกติ/โกรธ/โกรธแรง/ดีใจ/เศร้า/หงุดหงิด</p>
+    <h3>แคปชันโพสต์</h3>
+    <textarea id="cap"></textarea>
+    <div class="row"><label>เสียง <select id="voice"></select></label><label title="หน้าผู้ประกาศประจำ (รูปเดียวกับหน้าขายของ) · คลิกขวา = เอาออก">ผู้ประกาศ <span class="face" id="face">เลือก</span></label><button id="btnMake" class="primary">🎬 ทำคลิป</button></div>
+  </section>
+
+  <section class="card"><h3>📜 บันทึก</h3><pre id="log"></pre></section>
+
+  <section class="card" id="outCard" hidden>
+    <h3>3. คลิป</h3>
+    <div class="out"><video id="vid" controls></video>
+      <div><div class="row"><button id="btnPost" class="primary">📤 โพสต์ลง Facebook Reels</button><button id="btnOpen">📂 เปิดโฟลเดอร์</button></div>
+        <p class="hint" id="postHint"></p></div></div>
+  </section>
+</main>
+<script src="news.js"></script>
+<script src="engine.js"></script>
+<script src="update.js"></script>
+</body>
+</html>

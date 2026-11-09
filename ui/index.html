@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>KNF</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside>
+  <div class="logo"><span>🎬</span><b>KNF</b><small>FILM</small></div>
+  <button id="sideStart" class="toggle"><i></i><div><b>▶ เริ่ม</b><small id="sideState">หยุดอยู่ · กดเพื่อเริ่ม</small></div></button>
+  <nav>
+    <a class="on">🎞️ KNF Film <em>หนังสั้น</em></a>
+    <a href="shopee.html">🛒 คลิปขายของ <em>Shopee</em></a>
+    <a href="shopee.html?shop=tiktok">🎵 คลิปขายของ <em>TikTok</em></a>
+    <a href="news.html">📰 สรุปข่าว <em>Reels</em></a>
+    <a href="post.html">📤 โพสต์ + ปักตะกร้า <em>อัตโนมัติ</em></a>
+    <a href="live.html">🔴 ไลฟ์ขายของ <em>TikTok</em></a>
+    <a id="navMeta">🤖 Meta AI <em id="metaBadge" class="warn">?</em></a>
+    <a id="navFlow">🎥 Google Flow <em id="flowBadge" class="warn">?</em></a>
+  </nav>
+  <div class="foot">v0.1.0</div>
+</aside>
+
+<main>
+  <section class="card head">
+    <div class="ico">🎬</div>
+    <div><h1>KNF Film <small>By Meta.AI</small> <span class="pill">หนังสั้น AI</span></h1>
+      <p>โปรเจกต์ใหม่ · บอกทำภาพ คลิป และบทด้วย Meta AI</p></div>
+    <button id="btnMeta" class="ghost">🔑 เปิด Meta AI / ล็อกอิน</button>
+  </section>
+
+  <ol class="stepper" id="stepper"></ol>
+
+  <section class="card form" id="form">
+    <label>แนวเรื่อง
+      <select id="genre">
+        <option>ดราม่าชีวิต</option><option>สยองขวัญ</option><option>ตลก</option><option>โรแมนติก</option>
+        <option>แอ็คชัน</option><option>ลึกลับ สืบสวน</option><option>แฟนตาซี</option>
+      </select></label>
+    <label class="wide">ไอเดียตั้งต้น (ไม่ใส่ก็ได้)<input id="idea" placeholder="เช่น ลูกชายกลับบ้านเกิดหลังพ่อเสีย"></label>
+    <label>จำนวน EP<input id="eps" type="number" min="1" max="10" value="1"></label>
+    <label>ฉากต่อ EP (~4 วิ/ฉาก)<input id="scenes" type="number" min="2" max="16" value="12"></label>
+    <label>ตัวสร้างภาพ/วิดีโอ
+      <select id="engine">
+        <option value="comfy">ComfyUI ในเครื่อง (ฟรี · ปากขยับตามเสียง · ~1 นาที/ฉาก)</option>
+        <option value="flow">Google Flow (รูปฟรี · วิดีโอใช้เครดิต)</option>
+        <option value="meta">Meta AI อย่างเดียว</option>
+      </select></label>
+    <label>ความละเอียดวิดีโอ Flow
+      <select id="flowQuality">
+        <option value="720p">720p (24 เครดิต/ฉาก)</option>
+        <option value="360p">360p (8 เครดิต/ฉาก)</option>
+      </select></label>
+    <label class="wide" id="credit" style="justify-content:flex-end"></label>
+    <label>เสียงพากย์
+      <select id="tts">
+        <option value="f5">F5 ในเครื่อง (ตัวละครละเสียง)</option>
+        <option value="edge">edge-tts (ชาย 1 หญิง 1)</option>
+      </select></label>
+    <label class="chk"><input id="voice" type="checkbox" checked> พากย์เสียง</label>
+  </section>
+
+  <section class="card auto" id="auto" hidden>
+    <div class="row">
+      <div class="spin" id="spin"></div>
+      <div class="grow">
+        <h3 id="autoTitle">🤖 โหมดอัตโนมัติ</h3>
+        <p id="autoSub"></p>
+      </div>
+      <button id="btnStop" class="danger">■ หยุด</button>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <div class="actions">
+    <button id="btnStart" class="primary">▶ เริ่มโหมดอัตโนมัติ</button>
+  </div>
+  <section class="card" id="queue" style="display:none;gap:6px"></section>
+
+  <section class="card"><h3>📜 บันทึก</h3><pre id="log"></pre></section>
+  <section class="card"><h3>🖼️ ผลงาน</h3><div class="gallery" id="gallery"></div></section>
+  <section class="card"><h3>📁 โปรเจกต์ที่ทำไว้</h3><div id="projects"></div></section>
+</main>
+<script src="app.js"></script>
+<script src="engine.js"></script>
+<script src="update.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>KNF · ไลฟ์ขายของ</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css">
+<style>
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .row label { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
+  .hint { color:var(--mut); font-size:12px; margin:6px 0 0; }
+  .prod { display:grid; grid-template-columns:28px 1.4fr 1fr 90px 2fr 70px 96px 32px; gap:8px; align-items:start; margin-top:8px; }
+  .prod input, .prod textarea { width:100%; box-sizing:border-box; }
+  .prod textarea { min-height:38px; resize:vertical; }
+  .prod b { padding-top:8px; text-align:center; }
+  .phead { color:var(--mut); font-size:12px; }
+  .now { font-size:18px; } .now small { color:var(--mut); font-size:13px; }
+  #line { margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,.05); min-height:22px; }
+  .prod.on { outline:2px solid #ff3b5c; border-radius:8px; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><span>🔴</span><b>KNF</b><small>LIVE</small></div>
+  <nav>
+    <a href="index.html">🎞️ KNF Film <em>หนังสั้น</em></a>
+    <a href="shopee.html">🛒 คลิปขายของ <em>Shopee</em></a>
+    <a href="shopee.html?shop=tiktok">🎵 คลิปขายของ <em>TikTok</em></a>
+    <a href="news.html">📰 สรุปข่าว <em>Reels</em></a>
+    <a href="post.html">📤 โพสต์ + ปักตะกร้า <em>อัตโนมัติ</em></a>
+    <a class="on">🔴 ไลฟ์ขายของ <em>TikTok</em></a>
+  </nav>
+  <div class="foot">AI พูดตามตะกร้าที่ปัก</div>
+</aside>
+
+<main>
+  <section class="card head">
+    <div class="ico">🔴</div>
+    <div><h1>ไลฟ์ขายของ <span class="pill">TikTok LIVE</span></h1>
+      <p>ปักตะกร้าทีละชิ้นตามเวลา → AI พูดเรื่องชิ้นที่ปักอยู่ · จบรอบเขียนบทใหม่เอง ไม่ซ้ำของเดิม (จำทุกประโยคที่เคยพูด)</p></div>
+  </section>
+
+  <section class="card">
+    <h3>1. สินค้าในไลฟ์ (เรียงตามลำดับที่จะปัก)</h3>
+    <div class="prod phead"><span>#</span><span>ชื่อสินค้า (ให้ AI พูด)</span><span>คำที่ใช้หาในหน้าไลฟ์</span><span>ราคา</span><span>จุดเด่น / ข้อมูล / โปรที่มีจริง</span><span>นาที</span><span>คลิปของชิ้นนี้</span><span></span></div>
+    <div id="prods"></div>
+    <div class="row"><button id="btnAdd">➕ เพิ่มสินค้า</button><button id="btnFrom">📥 ดึงจากคลิปขายของที่ทำไว้</button>
+      <span class="hint">"คำที่ใช้หา" = ชื่อสั้น ๆ ที่ตรงกับในรายการสินค้าของไลฟ์ (ว่าง = ใช้ชื่อสินค้า) · นาทีว่าง = ใช้ค่ากลาง</span></div>
+  </section>
+
+  <section class="card">
+    <h3>2. ตั้งค่า</h3>
+    <div class="row">
+      <label>เวลาต่อชิ้น (นาที) <input id="minutes" type="number" min="1" max="60" style="width:70px"></label>
+      <label>AI พูดคั่นระหว่างคลิป <input id="between" type="number" min="0" max="10" style="width:60px"> ประโยค</label>
+      <label>เสียง <select id="voice"><option value="female">ผู้หญิง (Premwadee)</option><option value="male">ผู้ชาย (Niwat)</option></select></label>
+      <label style="flex:1">สไตล์การพูด <input id="style" style="flex:1;min-width:240px"></label>
+    </div>
+    <div class="row">
+      <label>พื้นหลัง <button id="btnBg"></button></label>
+      <label>คลิปคนขาย (ตอน AI พูด) <button id="btnPres"></button></label>
+      <label><input type="checkbox" id="greenKey"> คลิปคนขายเป็นฉากเขียว (ตัดออกให้เห็นพื้นหลัง)</label>
+      <label><input type="checkbox" id="top"> รูปสินค้า + ON AIR ด้านบน</label>
+      <label><input type="checkbox" id="lipsync"> 👄 ขยับปากตามเสียง AI (MuseTalk, ต้องมีคลิปคนขายเห็นหน้าตรง)</label>
+    </div>
+    <p class="hint">คลิกขวาที่ปุ่มพื้นหลัง/คนขาย = เอาออก · ไม่มีคลิปคนขาย = ตอน AI พูดโชว์รูปสินค้าตัวใหญ่แทน · การ์ดตะกร้ามีเลขโชว์ตลอดตามชิ้นที่ปัก</p>
+    <div class="row">
+      <label><input type="checkbox" id="pin"> ปักตะกร้าให้อัตโนมัติ (ไม่ติ๊ก = พูดอย่างเดียว ปักเอง)</label>
+      <label style="flex:1">หน้า LIVE Manager <input id="url" style="flex:1;min-width:300px"></label>
+      <button id="btnPage">🌐 เปิดหน้าไลฟ์ใน Chrome</button>
+      <button id="btnMeta">🤖 หน้าต่าง Meta AI</button>
+    </div>
+    <p class="hint">ก่อนเริ่ม: เปิดไลฟ์ใน LIVE Studio + เพิ่มสินค้าเข้าไลฟ์ให้ครบ · ล็อกอิน TikTok ในหน้า Chrome ที่บอทเปิด · ใน LIVE Studio เพิ่มแหล่งภาพ "จับหน้าต่าง" = KNF LIVE และแหล่งเสียงจากคอม</p>
+    <p class="hint">ลำดับต่อชิ้น: ปักตะกร้าชิ้นนั้น → เล่นคลิปของชิ้นนั้น → AI พูดคั่นบนการ์ดสินค้า → คลิปถัดไป … ครบนาทีแล้วไปชิ้นถัดไป · ชิ้นไหนไม่มีคลิป AI พูดยาวทั้งช่วง · ใส่ 0 = เล่นคลิปอย่างเดียว</p>
+    <div class="row"><button id="btnStart" class="primary">▶️ เริ่มไลฟ์</button><button id="btnStop">⏹️ หยุด</button><button id="btnPlayer">📺 เปิดจอไลฟ์</button></div>
+  </section>
+
+  <section class="card">
+    <h3>กำลังขาย</h3>
+    <div class="now" id="now">— ยังไม่เริ่ม —</div>
+    <div id="line"></div>
+  </section>
+
+  <section class="card"><h3>📜 บันทึก</h3><pre id="log"></pre></section>
+</main>
+<script src="live.js"></script>
+<script src="engine.js"></script>
+<script src="update.js"></script>
+</body>
+</html>

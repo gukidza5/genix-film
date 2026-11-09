@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>KNF · โพสต์ + ปักตะกร้า</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css">
+<style>
+  .set { display:flex; flex-wrap:wrap; gap:18px; align-items:center; }
+  .set label { display:flex; gap:6px; align-items:center; color:var(--txt); }
+  .clip { display:grid; grid-template-columns:110px 1fr; gap:14px; padding:12px 0; border-top:1px solid var(--line); }
+  .clip video { width:110px; aspect-ratio:9/16; border-radius:10px; background:#000; object-fit:cover; }
+  .clip textarea { width:100%; min-height:70px; resize:vertical; }
+  .clip .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .clip .row label { display:flex; flex-direction:column; gap:4px; color:var(--mut); font-size:12px; }
+  .st { font-size:12px; color:var(--mut); margin-left:8px; }
+  .st b.ok { color:#4ade80; } .st b.dry { color:#fbbf24; } .st b.err { color:#f87171; }
+  .hint { color:var(--mut); font-size:12px; margin:6px 0 0; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><span>📤</span><b>KNF</b><small>POST</small></div>
+  <nav>
+    <a href="index.html">🎞️ KNF Film <em>หนังสั้น</em></a>
+    <a href="shopee.html">🛒 คลิปขายของ <em>Shopee</em></a>
+    <a href="shopee.html?shop=tiktok">🎵 คลิปขายของ <em>TikTok</em></a>
+    <a href="news.html">📰 สรุปข่าว <em>Reels</em></a>
+    <a class="on">📤 โพสต์ + ปักตะกร้า <em>อัตโนมัติ</em></a>
+    <a href="live.html">🔴 ไลฟ์ขายของ <em>TikTok</em></a>
+  </nav>
+  <div class="foot">ยังไม่เคยเทสกับเว็บจริง</div>
+</aside>
+
+<main>
+  <section class="card head">
+    <div class="ico">📤</div>
+    <div><h1>โพสต์ + ปักตะกร้า <span class="pill">TikTok · Facebook · Shopee</span></h1>
+      <p>บอทอัปคลิป ใส่แคปชัน ปักตะกร้าสินค้า ผ่าน Chrome ของแอป (ล็อกอินครั้งเดียว)</p></div>
+    <button id="btnLogin" class="ghost">🔑 เปิดหน้าล็อกอิน</button>
+  </section>
+
+  <section class="card">
+    <div class="set">
+      <b>โพสต์ไปที่:</b>
+      <label><input type="checkbox" id="pf_tiktok"> TikTok (ตะกร้า TikTok Shop)</label>
+      <label><input type="checkbox" id="pf_facebook"> Facebook Reels (ลิงก์ในแคปชัน)</label>
+      <label><input type="checkbox" id="pf_shopee"> Shopee Video (ผูกสินค้า)</label>
+    </div>
+    <div class="set" style="margin-top:12px">
+      <label><input type="checkbox" id="dryRun"> 🧪 โหมดทดลอง: ทำทุกอย่างแต่หยุดก่อนกดโพสต์</label>
+      <label><input type="checkbox" id="autopost"> 🤖 ทำเรื่อง/คลิปเสร็จแล้วโพสต์เองทันที</label>
+      <label>⏱️ เว้นห่างแต่ละโพสต์ (ต่อเว็บ) <input type="number" id="gapMin" min="0" max="1440" style="width:80px"> นาที</label>
+    </div>
+    <div class="set" style="margin-top:12px"><label style="flex:1">👤 เพจเฟสที่จะโพสต์ <input id="fbPage" style="flex:1;min-width:320px" placeholder="https://www.facebook.com/ชื่อเพจ (ว่าง = โปรไฟล์ที่ล็อกอิน)"></label></div>
+    <p class="hint">ปักตะกร้า: ช่อง "สินค้า" ใส่ชื่อหรือรหัสสินค้าที่อยู่ในโชว์เคส/ตะกร้าของไอดีนั้น · ลิงก์สินค้าจะไปแปะท้ายแคปชันเฟส · คลิปจากโหมดขายของจะเติมให้เอง</p>
+  </section>
+
+  <section class="card"><h3>📜 บันทึกการโพสต์</h3><pre id="log"></pre></section>
+  <section class="card"><h3>🎬 คลิปที่ทำเสร็จ</h3><div id="clips"><small>กำลังโหลด…</small></div></section>
+</main>
+<script src="post.js"></script>
+<script src="engine.js"></script>
+<script src="update.js"></script>
+</body>
+</html>

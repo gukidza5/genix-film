@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>KNF · คลิปขายของ Shopee</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data: https:; media-src 'self' file:; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css">
+<style>
+  .prod { display:grid; grid-template-columns:150px 1fr; gap:16px; align-items:start; }
+  .face { width:72px; aspect-ratio:1; border-radius:50%; background:#0d1022 center 15%/cover no-repeat; border:1px dashed var(--line); display:grid; place-items:center; color:var(--mut); font-size:11px; text-align:center; cursor:pointer; }
+  .prod .pic { width:150px; aspect-ratio:1; border-radius:14px; background:#0d1022 center/cover no-repeat; border:1px dashed var(--line); display:grid; place-items:center; color:var(--mut); font-size:12px; cursor:pointer; }
+  .prod .fields { display:grid; grid-template-columns:3fr 1fr; gap:10px; }
+  .prod .fields .wide { grid-column:1/-1; }
+  .prod label, .opts label { display:flex; flex-direction:column; gap:6px; color:var(--mut); font-size:13px; }
+  .urlrow { display:flex; gap:8px; } .urlrow input { flex:1; }
+  .opts { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .hint { color:var(--mut); font-size:12px; margin:6px 0 0; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><span>🛒</span><b>KNF</b><small>SHOP</small></div>
+  <button id="sideStart" class="toggle"><i></i><div><b>▶ เริ่ม</b><small id="sideState">หยุดอยู่ · กดเพื่อเริ่ม</small></div></button>
+  <nav>
+    <a href="index.html">🎞️ KNF Film <em>หนังสั้น</em></a>
+    <a class="on" href="shopee.html">🛒 คลิปขายของ <em>Shopee</em></a>
+    <a href="shopee.html?shop=tiktok">🎵 คลิปขายของ <em>TikTok</em></a>
+    <a href="news.html">📰 สรุปข่าว <em>Reels</em></a>
+    <a href="post.html">📤 โพสต์ + ปักตะกร้า <em>อัตโนมัติ</em></a>
+    <a href="live.html">🔴 ไลฟ์ขายของ <em>TikTok</em></a>
+    <a id="navMeta">🤖 Meta AI <em id="metaBadge" class="warn">?</em></a>
+  </nav>
+  <div class="foot">v0.2.0</div>
+</aside>
+
+<main>
+  <section class="card head">
+    <div class="ico">🛒</div>
+    <div><h1>คลิปขายของ <small>By Meta.AI</small> <span class="pill">Shopee Affiliate</span></h1>
+      <p>วางลิงก์สินค้า → บอททำบท ภาพ วิดีโอ เสียง ซับ การ์ดราคา และแคปชันโพสต์ให้</p></div>
+    <button id="btnMeta" class="ghost">🔑 เปิด Meta AI / ล็อกอิน</button>
+  </section>
+
+  <section class="card prod" id="form">
+    <div class="pic" id="pic">เลือกรูปสินค้า</div>
+    <div class="fields">
+      <label class="wide">ลิงก์สินค้า Shopee (ลิงก์ affiliate ก็ได้)
+        <div class="urlrow"><input id="url" placeholder="https://s.shopee.co.th/..."><button id="btnFetch">ดึงข้อมูล</button><button id="btnShopee" title="เปิดหน้าล็อกอินร้าน (ถ้าดึงข้อมูลไม่ได้)">🔑</button></div></label>
+      <label>ชื่อสินค้า<input id="title" placeholder="ดึงจากลิงก์ หรือพิมพ์เอง"></label>
+      <label>ราคา<input id="price" placeholder="฿199"></label>
+      <label class="wide">จุดเด่นที่อยากเน้น (ไม่ใส่ก็ได้)<input id="note" placeholder="เช่น ชาร์จเร็ว แบตอึด ส่งฟรี"></label>
+    </div>
+  </section>
+
+  <section class="card opts">
+    <label>ผู้แสดง<select id="presence"><option value="hands">เห็นแค่มือ</option><option value="full">พรีเซนเตอร์ 1 คน</option><option value="none">ไม่มีคน เห็นแต่สินค้า</option><option value="auto">ให้บอทเลือก</option></select></label>
+    <label title="ใช้หน้าคนนี้ทุกคลิป (ตอนผู้แสดง = พรีเซนเตอร์) · คลิกขวาเพื่อเอาออก">หน้าพรีเซนเตอร์ประจำ<div class="face" id="face">เลือกรูปหน้า</div></label>
+    <label>สไตล์ภาพ<select id="style"><option value="ugc">รีวิวมือถือสมจริง</option><option value="live">ไลฟ์ขายของ</option><option value="studio">สตูดิโอสินค้า</option><option value="cinematic">โฆษณาภาพยนตร์</option><option value="cartoon3d">การ์ตูน 3D</option><option value="anime">อนิเมะ</option><option value="timelapse">ไทม์แลปส์</option></select></label>
+    <label>ฉาก<select id="scene"><option value="auto">ให้เข้ากับสินค้า</option><option value="home">ห้องนั่งเล่น</option><option value="kitchen">ห้องครัว</option><option value="vanity">โต๊ะเครื่องแป้ง</option><option value="livetable">โต๊ะไลฟ์</option><option value="studio">ผนังสตูดิโอ</option><option value="outdoor">กลางแจ้ง</option><option value="shop">หน้าร้าน/ตลาด</option></select></label>
+    <label>สัดส่วน<select id="aspect"><option>9:16</option><option>4:5</option><option>1:1</option><option>16:9</option></select></label>
+    <label>โทน<select id="tone"><option value="hype">ป้ายยา ตื่นเต้น</option><option value="friendly">เป็นกันเอง</option><option value="funny">ตลก</option><option value="teen">วัยรุ่น</option><option value="calm">นุ่มนวลน่าเชื่อถือ</option><option value="pro">มืออาชีพ</option></select></label>
+    <label>ระดับภาษา<select id="register"><option value="casual">กันเองกวน ๆ</option><option value="polite">สุภาพ</option></select></label>
+    <label>สำเนียงบท<select id="accent"><option value="central">กลาง</option><option value="isan">อีสาน</option><option value="north">เหนือ</option><option value="south">ใต้</option></select></label>
+    <label>เสียง<select id="voice"><option value="female">บรรยาย · ผู้หญิง</option><option value="male">บรรยาย · ผู้ชาย</option><option value="none">ไม่มีเสียงพูด</option></select></label>
+    <label>จำนวนคลิป<input id="clips" type="number" min="1" max="5" value="2"></label>
+    <label>ฉากต่อคลิป<input id="scenes" type="number" min="2" max="8" value="4"></label>
+    <label>ปุ่มท้ายคลิป<input id="cta" value="กดตะกร้าเลย 🛒"></label>
+    <label>วิดีโอ<select id="video"><option value="comfy">ComfyUI ในเครื่อง (ฟรี ~1 นาที/ฉาก)</option><option value="zoom">ภาพนิ่งซูม (เร็วสุด)</option><option value="meta">Meta AI</option></select></label>
+    <label>ทำเสร็จแล้ว<select id="autopost"><option value="yes">โพสต์ขึ้น TikTok เลย</option><option value="no">ยังไม่โพสต์ (เก็บไว้ก่อน)</option></select></label>
+  </section>
+
+  <section class="card auto" id="auto" hidden>
+    <div class="row">
+      <div class="spin" id="spin"></div>
+      <div class="grow"><h3 id="autoTitle">🤖 กำลังทำคลิป</h3><p id="autoSub"></p></div>
+      <button id="btnStop" class="danger">■ หยุด</button>
+    </div>
+    <div class="bars" id="bars" style="grid-template-columns:repeat(5,1fr)"></div>
+  </section>
+
+  <div class="actions"><button id="btnStart" class="primary">▶ เริ่มทำคลิปขายของ</button></div>
+  <section class="card" id="queue" style="display:none;gap:6px"></section>
+
+  <section class="card"><h3>📜 บันทึก</h3><pre id="log"></pre></section>
+  <section class="card"><h3>🖼️ ผลงาน</h3><div class="gallery" id="gallery"></div></section>
+  <section class="card"><h3>📁 งานที่ทำไว้</h3><div id="projects"></div></section>
+</main>
+<script src="shopee.js"></script>
+<script src="engine.js"></script>
+<script src="update.js"></script>
+</body>
+</html>
