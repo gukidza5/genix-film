@@ -3,6 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const stats = require('./stats');
+const { line } = require('./notify');
+const PF = { facebook: 'Facebook', youtube: 'YouTube', tiktok: 'TikTok' };
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36' };
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 
@@ -59,10 +62,33 @@ class NewsAuto {
   start() { this.timer = setInterval(() => this.tick().catch((e) => this.log('❌ ข่าวอัตโนมัติ: ' + e.message)), 60000); }
   async tick() {
     const c = this.cfg();
+    const now = new Date(), today = now.toLocaleDateString('sv');
+    // 23:30 เก็บยอดวิว + สรุปเข้า LINE วันละครั้ง
+    if (c.on && now.getHours() === 23 && now.getMinutes() >= 30 && c.statsDay !== today && !this.running && !this.busy()) {
+      this.cfg({ statsDay: today });
+      return this.dailyStats().catch((e) => this.log('❌ เก็บยอดวิว: ' + e.message));
+    }
     const slot = this.slotNow(c);
     if (!c.on || !slot || slot === c.lastSlot || this.running || this.busy()) return;
     this.cfg({ lastSlot: slot });
-    await this.round();
+    const at = `${String(now.getHours()).padStart(2, '0')}:00`;
+    try {
+      const r = await this.round();
+      if (r.dir) await this.say(`✅ ข่าว ${at} ${r.posted ? 'โพสต์แล้ว' : 'ทำเสร็จ (ไม่ได้ติ๊กที่โพสต์)'}\n${r.title}\n${Object.entries(r.posted || {}).map(([p, v]) => `${PF[p] || p}: ${v === 'ok' || /^\d{4}-/.test(v) ? '✓' : v === 'dry' ? 'โหมดทดลอง' : '✗ ' + String(v).replace(/^error: /, '').slice(0, 120)}`).join('\n')}`);
+      else if (r.skipped === 'all failed') await this.say(`⚠️ ข่าว ${at}: ทำไม่ได้สักข่าว (บทมีเลขแต่ง/เขียนบทพัง) ดูบันทึกในแอป`);
+    } catch (e) { await this.say(`❌ ข่าว ${at} พัง: ${e.message.slice(0, 300)}`); throw e; }
+  }
+  say(text) { return line(text).catch((e) => this.log('⚠️ แจ้ง LINE ไม่ได้: ' + e.message)); }
+
+  async dailyStats() {
+    const clips = this.listClips(this.root).filter((x) => x.mode === 'news' && Object.values(x.posted || {}).some((v) => /^\d{4}-/.test(String(v))));
+    if (!clips.length) return;
+    this.log('📊 เก็บยอดวิวคลิปข่าว');
+    const st = await stats.collect({ flow: this.flow, settings: this.poster.settings(), clips, userData: this.userData, log: this.log });
+    const r = stats.ranked(st, 7);
+    if (!r.length) return;
+    const row = (x, i) => `${i + 1}. ${x.total.toLocaleString()} วิว (FB ${x.fb ?? '-'} / YT ${x.yt ?? '-'}) ${x.title.slice(0, 45)}`;
+    await this.say(`📊 ยอดวิวคลิปข่าว 7 วัน (${r.length} คลิป รวม ${r.reduce((s, x) => s + x.total, 0).toLocaleString()} วิว)\n🔥 คนดูเยอะ\n${r.slice(0, 3).map(row).join('\n')}${r.length > 5 ? `\n🥶 คนดูน้อย\n${r.slice(-2).map((x, i) => row(x, r.length - 2 + i)).join('\n')}` : ''}`);
   }
 
   async round() {
@@ -101,7 +127,10 @@ class NewsAuto {
       const titles = arts.map((a, i) => `${i}. ${title(a)}`).join('\n');
       // เว็บเดียวลงเรื่องเดิมหลายลิงก์ (บุ๋มคืนที่ 1, 2, …) → บอก AI เรื่องที่ทำไปแล้ว ห้ามซ้ำ
       const done = (c.recent || []).slice(-12).join('\n') || '-';
-      const pick = await this.ask(this.metaWin(), `เลือกข่าวที่คนไทยบน TikTok/Facebook น่าจะสนใจดูคลิปสรุปที่สุด เรียงจากน่าทำที่สุด 3 ข่าว (ห้ามเลือกข่าวหวย/ดูดวง/โฆษณา/ข่าวที่ไม่มีเนื้อหา และห้ามเลือกข่าวที่เป็นเรื่องเดียวกับที่ทำไปแล้ว)\nทำไปแล้ว:\n${done}\n\nข่าวใหม่:\n${titles}\nตอบ JSON: {"order":[เลขข่าว,…]} ถ้าทุกข่าวซ้ำเรื่องเดิมหมด ตอบ {"order":[]}`, { want: 'json', timeoutMs: 120000 }).catch(() => null);
+      // ยอดวิวจริงของคลิปที่ผ่านมา (เก็บทุกคืน 23:30) → ให้ AI เลือกแนวที่คนดูเยอะ
+      const rk = stats.ranked(readJson(path.join(this.userData, 'newsstats.json'), {}), 14).filter((x) => x.total > 0);
+      const hint = rk.length >= 4 ? `\nยอดวิวจริงของเพจเรา — แนวที่คนดูเยอะ:\n${rk.slice(0, 5).map((x) => `${x.total} วิว: ${x.title}`).join('\n')}\nแนวที่คนดูน้อย:\n${rk.slice(-3).map((x) => `${x.total} วิว: ${x.title}`).join('\n')}\nให้น้ำหนักข่าวแนวที่คนดูเยอะ` : '';
+      const pick = await this.ask(this.metaWin(), `เลือกข่าวที่คนไทยบน TikTok/Facebook น่าจะสนใจดูคลิปสรุปที่สุด เรียงจากน่าทำที่สุด 3 ข่าว (ห้ามเลือกข่าวหวย/ดูดวง/โฆษณา/ข่าวที่ไม่มีเนื้อหา และห้ามเลือกข่าวที่เป็นเรื่องเดียวกับที่ทำไปแล้ว)${hint}\nทำไปแล้ว:\n${done}\n\nข่าวใหม่:\n${titles}\nตอบ JSON: {"order":[เลขข่าว,…]} ถ้าทุกข่าวซ้ำเรื่องเดิมหมด ตอบ {"order":[]}`, { want: 'json', timeoutMs: 120000 }).catch(() => null);
       if (pick && Array.isArray(pick.order) && !pick.order.length) { log('ข่าวใหม่ซ้ำเรื่องที่ทำไปแล้วหมด รอบนี้ข้าม'); arts.forEach((a) => seen.add(a.url)); fs.writeFileSync(this.seenFile, JSON.stringify([...seen].slice(-2000))); return { skipped: 'duplicate' }; }
       const order = pick ? (pick.order || []).map(Number).filter((i) => arts[i]) : [...arts.keys()];
       for (const i of order.slice(0, 3)) {
@@ -122,10 +151,11 @@ class NewsAuto {
         const voice = c.voice || (this.news.voices()[0] || {}).id || 'edge';
         const dir = await this.news.make(this.root, spec, voice, { log: this.log, gpuBusy: () => false });
         const clip = this.listClips(this.root).find((x) => x.dir === dir);
-        if (clip && c.platforms.length) { log('โพสต์'); await this.poster.post(clip, c.platforms); }
+        let posted = null;
+        if (clip && c.platforms.length) { log('โพสต์'); posted = await this.poster.post(clip, c.platforms); }
         this.cfg({ last: { at: new Date().toISOString(), dir, url: a.url }, recent: [...(this.cfg().recent || []), title(a)].slice(-30) });
         log('✅ รอบนี้เสร็จ');
-        return { dir };
+        return { dir, title: title(a), posted };
       }
       log('ทำไม่ได้สักข่าวในรอบนี้');
       return { skipped: 'all failed' };

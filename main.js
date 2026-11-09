@@ -174,6 +174,14 @@ ipcMain.handle('post:settings', (_e, s) => (s ? poster.saveSettings(s) : poster.
 ipcMain.handle('post:run', (_e, { clip, platforms }) => poster.post(clip, platforms));
 ipcMain.handle('news:voices', () => news.voices());
 ipcMain.handle('key:gemini', (_e, k) => (k === undefined || k === null ? hasGeminiKey() : setGeminiKey(k)));
+ipcMain.handle('key:line', async (_e, k) => {
+  const n = require('./notify');
+  if (k === undefined || k === null) return n.hasToken();
+  const on = n.setToken(k);
+  if (!on) return { on };
+  try { await n.line('🔔 Genix Film: เชื่อมแจ้งเตือน LINE แล้ว ข่าวอัตโนมัติจะแจ้งทุกรอบ + สรุปยอดวิวทุกคืน 23:30'); return { on }; }
+  catch (e) { return { on, error: e.message }; }
+});
 ipcMain.handle('key:eleven', (_e, k) => { const el = require('./eleven'); return k === undefined || k === null ? !!el.key() : el.setKey(k); });
 ipcMain.handle('update:check', () => updater.check().catch((e) => ({ error: e.message })));
 ipcMain.handle('update:apply', async () => {
