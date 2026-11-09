@@ -5,8 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const PLATFORMS = { tiktok: 'TikTok', facebook: 'Facebook Reels', shopee: 'Shopee Video' };
+const PLATFORMS = { tiktok: 'TikTok', facebook: 'Facebook Reels', youtube: 'YouTube Shorts', shopee: 'Shopee Video' };
 const LOGIN = {
+  youtube: 'https://www.youtube.com/upload',
   tiktok: 'https://www.tiktok.com/tiktokstudio/upload',
   facebook: 'https://www.facebook.com/',
   shopee: 'https://seller.shopee.co.th/', // shortcut: Shopee Video บนเว็บน่าจะมีแค่ Seller Centre, affiliate อย่างเดียวอาจต้องใช้แอปมือถือ
@@ -47,7 +48,7 @@ class Poster {
     this.chain = Promise.resolve(); // โพสต์ทีละอัน ไม่ให้แย่ง Chrome กัน
   }
 
-  settings() { return { platforms: { tiktok: true, facebook: true, shopee: false }, autopost: false, dryRun: true, gapMin: 60, ...readJson(this.settingsFile, {}) }; }
+  settings() { return { platforms: { tiktok: true, facebook: true, youtube: false, shopee: false }, autopost: false, dryRun: true, gapMin: 60, ...readJson(this.settingsFile, {}) }; }
   // เว้นช่วงโพสต์ต่อเว็บ (kidza 9 พ.ย.: ไม่เอาโพสต์ติดกัน) — จำเวลาโพสต์ล่าสุดไว้ในไฟล์ข้าง post.json
   // shortcut: รอในแอป ถ้าปิดแอประหว่างรอ คลิปนั้นจะไม่ถูกโพสต์ (ไปกดโพสต์เองในหน้าโพสต์)
   get lastFile() { return path.join(path.dirname(this.settingsFile), 'lastpost.json'); }
@@ -64,7 +65,7 @@ class Poster {
   async page(url, pf) {
     await this.flow.connect();
     const ctx = this.flow.browser.contexts()[0];
-    const host = { tiktok: /tiktok\.com/, facebook: /facebook\.com/, shopee: /shopee\.co\.th/ }[pf];
+    const host = { tiktok: /tiktok\.com/, facebook: /facebook\.com/, youtube: /youtube\.com/, shopee: /shopee\.co\.th/ }[pf];
     let page = (this.tabs ||= {})[pf];
     if (!page || page.isClosed()) page = host && ctx.pages().filter((p) => host.test(p.url())).at(-1);
     page ||= await ctx.newPage();
@@ -93,7 +94,7 @@ class Poster {
         try {
           if (!s.dryRun) await this.waitGap(pf, +s.gapMin || 0);
           page = await this.page(LOGIN[pf], pf);
-          res[pf] = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage: s.fbPage });
+          res[pf] = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage: s.fbPage, ytChannel: s.ytChannel });
           this.log(res[pf] === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว`);
         } catch (e) {
           res[pf] = 'error: ' + e.message;
@@ -264,6 +265,38 @@ const DRIVERS = {
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
     return finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
+  },
+
+  // YouTube Studio (9 พ.ย.): youtube.com/upload → เลือกไฟล์ → ชื่อ (บรรทัดแรกแคปชัน ≤95) + คำอธิบาย → ไม่ได้ทำเพื่อเด็ก
+  // → เนื้อหาดัดแปลง/สังเคราะห์ = ใช่ (เสียง AI + ผู้ประกาศปากขยับ YouTube ให้บอก) → ถัดไป ×3 → สาธารณะ → เผยแพร่
+  // หาปุ่มจาก name/id ของ Studio (ไม่ขึ้นกับภาษาหน้าเว็บ) · คลิปแนวตั้ง ≤3 นาที ขึ้นเป็น Shorts เอง
+  async youtube(page, clip, { dryRun, log, ytChannel }) {
+    // ไอดีเดียวมีหลายช่อง: ลิงก์ /channel/UC… → เปิดหน้าอัปของช่องนั้นใน Studio ตรง ๆ
+    const ch = (String(ytChannel || '').match(/channel\/(UC[\w-]{20,})/) || [])[1];
+    if (ch) { log('📺 YouTube: อัปเข้าช่อง ' + ch); await page.goto(`https://studio.youtube.com/channel/${ch}/videos/upload?d=ud`, { waitUntil: 'domcontentloaded' }); }
+    await page.waitForTimeout(3000);
+    needLogin(page, /accounts\.google\.com|ServiceLogin/);
+    await page.bringToFront();
+    const file = page.locator('input[type=file]').first();
+    await file.waitFor({ state: 'attached', timeout: 60000 }).catch(() => { throw new Error(`หน้าอัป YouTube ไม่ขึ้น (อยู่ที่ ${page.url()}) — ล็อกอิน YouTube ใน Chrome ของแอป หรือยังไม่ได้สร้างช่อง`); });
+    await file.setInputFiles(clip.file);
+    const title = page.locator('#title-textarea #textbox');
+    await title.waitFor({ timeout: 120000 });
+    await sleep(3000); // Studio ใส่ชื่อไฟล์ลงช่องชื่อเองหลังอัป รอให้ใส่เสร็จก่อนค่อยทับ
+    const first = clip.caption.split('\n').find((l) => l.trim()) || clip.title;
+    await typeInto(page, title, first.replace(/[<>]/g, '').slice(0, 95));
+    await typeInto(page, page.locator('#description-textarea #textbox'), clip.caption.replace(/[<>]/g, '').slice(0, 4900));
+    await page.locator('tp-yt-paper-radio-button[name="VIDEO_MADE_FOR_KIDS_NOT_MFK"]').click();
+    await page.locator('#toggle-button').click().catch(() => {}); // แสดงเพิ่มเติม
+    await page.locator('tp-yt-paper-radio-button[name="VIDEO_HAS_ALTERED_CONTENT_YES"]').click({ timeout: 8000 })
+      .catch(() => log('ℹ️ YouTube: ไม่เจอช่อง "เนื้อหาดัดแปลง" ข้าม'));
+    for (let i = 0; i < 3; i++) { await page.locator('#next-button').click(); await sleep(1500); }
+    await page.locator('tp-yt-paper-radio-button[name="PUBLIC"]').click();
+    if (dryRun) { await page.bringToFront(); return 'dry'; }
+    await page.locator('#done-button').click();
+    await page.locator('ytcp-video-share-dialog, ytcp-uploads-still-processing-dialog').first().waitFor({ timeout: 300000 })
+      .catch(() => { throw new Error('กดเผยแพร่แล้วไม่ขึ้นหน้าต่างยืนยัน (อาจยังอัปไม่เสร็จ/ติดเช็คลิขสิทธิ์)'); });
+    return 'ok';
   },
 
   async shopee(page, clip, { dryRun, log }) {

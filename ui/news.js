@@ -33,8 +33,21 @@ showClip(LS('dir'));
   if (!$('voice').value) $('voice').selectedIndex = 0;
   const s = await genix.postSettings();
   $('fbPage').value = s.fbPage || '';
+  $('ttAccount').value = s.ttAccount || '';
+  $('ytChannel').value = s.ytChannel || '';
   $('realPost').checked = !s.dryRun;
+  const pfs = (await genix.newsAutoCfg()).platforms;
+  document.querySelectorAll('.pf').forEach((b) => (b.checked = pfs.includes(b.value)));
 })();
+// ช่องติ๊กแพลตฟอร์มข่าว = ใช้ทั้งปุ่มโพสต์ในหน้านี้และข่าวอัตโนมัติ (เก็บใน newsauto.json)
+const platforms = () => [...document.querySelectorAll('.pf:checked')].map((b) => b.value);
+document.querySelectorAll('.pf').forEach((b) => (b.onchange = () => genix.newsAutoCfg({ platforms: platforms() })));
+$('ttAccount').onchange = () => genix.postSettings({ ttAccount: $('ttAccount').value.trim() });
+$('ytChannel').onchange = () => {
+  const v = $('ytChannel').value.trim();
+  if (v && !/youtube\.com\/channel\/UC[\w-]{20,}/.test(v)) alert('ใส่ลิงก์แบบ youtube.com/channel/UC… (ดูได้ใน YouTube Studio › ตั้งค่า › ช่อง › ขั้นสูง) ไม่งั้นแอปจะอัปเข้าช่องหลักของไอดี');
+  genix.postSettings({ ytChannel: v });
+};
 $('voice').onchange = () => (localStorage.newsVoice = $('voice').value);
 $('fbPage').onchange = () => {
   const v = $('fbPage').value.trim();
@@ -126,12 +139,15 @@ async function post(ask) {
   const clip = (await genix.postClips()).find((c) => c.dir === dir);
   if (!clip) throw new Error('หาคลิปไม่เจอ');
   const s = await genix.postSettings();
-  const where = s.fbPage ? 'เพจ ' + s.fbPage : 'โปรไฟล์ที่ล็อกอิน';
-  if (ask && !s.dryRun && !confirm(`โพสต์จริงลง Facebook Reels ของ${where}?`)) return;
-  log(`📤 โพสต์ลง Reels (${where}${s.dryRun ? ' · โหมดทดลอง หยุดก่อนกดเผยแพร่' : ''})`);
+  const pf = platforms();
+  if (!pf.length) throw new Error('ติ๊กเลือกก่อนว่าจะโพสต์ที่ไหน (Facebook / TikTok / YouTube)');
+  const names = { facebook: 'Facebook', tiktok: 'TikTok', youtube: 'YouTube' };
+  if (ask && !s.dryRun && !confirm(`โพสต์จริงลง ${pf.map((p) => names[p]).join(' + ')}?`)) return;
+  log(`📤 โพสต์ลง ${pf.map((p) => names[p]).join(' + ')}${s.dryRun ? ' · โหมดทดลอง หยุดก่อนกดเผยแพร่' : ''}`);
   LS('autoPost', null); // การโพสต์วิ่งฝั่งแอป สลับหน้าระหว่างนี้ก็โพสต์ต่อจนจบ
-  const r = await genix.post(clip, ['facebook']);
-  if (String(r?.facebook || '').startsWith('error')) throw new Error(r.facebook);
+  const r = await genix.post(clip, pf);
+  const bad = pf.filter((p) => String(r?.[p] || '').startsWith('error'));
+  if (bad.length) throw new Error(bad.map((p) => `${names[p]}: ${r[p]}`).join(' · '));
 }
 
 // ปุ่มไหนก็ทำทีละงาน ล็อกปุ่มทั้งหมดระหว่างทำ

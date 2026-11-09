@@ -47,7 +47,9 @@
   <section class="card">
     <h3>1. เนื้อข่าว</h3>
     <textarea id="text" placeholder="วางลิงก์ข่าว (เช่น https://women.kapook.com/view/...) แล้วกดปุ่มได้เลย แอปดึงเนื้อข่าวเอง · หรือก๊อปเนื้อข่าวจากสำนักข่าวมาวางก็ได้"></textarea>
-    <div class="row"><label style="flex:1">ลิงก์เพจที่จะโพสต์ <input id="fbPage" style="flex:1;min-width:280px" placeholder="https://www.facebook.com/ชื่อเพจ (ว่าง = โปรไฟล์ที่ล็อกอิน)"></label></div>
+    <div class="row"><label><input type="checkbox" class="pf" value="facebook"> Facebook</label><label style="flex:1">ลิงก์เพจที่จะโพสต์ <input id="fbPage" style="flex:1;min-width:280px" placeholder="https://www.facebook.com/ชื่อเพจ (ว่าง = โปรไฟล์ที่ล็อกอิน)"></label></div>
+    <div class="row"><label><input type="checkbox" class="pf" value="tiktok"> TikTok</label><label style="flex:1">ลิงก์ช่อง TikTok <input id="ttAccount" style="flex:1;min-width:280px" placeholder="https://www.tiktok.com/@ชื่อช่อง (โพสต์ด้วยไอดีที่ล็อกอินใน Chrome ของแอป)"></label></div>
+    <div class="row"><label><input type="checkbox" class="pf" value="youtube"> YouTube</label><label style="flex:1">ลิงก์ช่อง YouTube <input id="ytChannel" style="flex:1;min-width:280px" placeholder="https://www.youtube.com/channel/UC… (ว่าง = ช่องหลักของไอดีที่ล็อกอิน)"></label></div>
     <div class="row"><label><input type="checkbox" id="realPost"> โพสต์จริง (ไม่ติ๊ก = โหมดทดลอง บอทหยุดก่อนกดเผยแพร่)</label></div>
     <div class="row"><button id="btnAll" class="primary">⚡ ทำรวดเดียวจนโพสต์</button><button id="btnScript">✍️ เขียนบทอย่างเดียว</button>
       <span class="hint">รวดเดียว = เขียนบท → ทำคลิป → โพสต์ Reels · ถ้าตัวเลขบนจอไม่มีในเนื้อข่าว จะหยุดไม่โพสต์</span></div>
@@ -67,7 +69,7 @@
   <section class="card" id="outCard" hidden>
     <h3>3. คลิป</h3>
     <div class="out"><video id="vid" controls></video>
-      <div><div class="row"><button id="btnPost" class="primary">📤 โพสต์ลง Facebook Reels</button><button id="btnOpen">📂 เปิดโฟลเดอร์</button></div>
+      <div><div class="row"><button id="btnPost" class="primary">📤 โพสต์ (ตามที่ติ๊ก)</button><button id="btnOpen">📂 เปิดโฟลเดอร์</button></div>
         <p class="hint" id="postHint"></p></div></div>
   </section>
 </main>
