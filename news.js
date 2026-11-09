@@ -96,6 +96,36 @@ async function fetchFacebook(url, flow) {
   } finally { await page.close().catch(() => {}); }
 }
 
+// เพจเฟส (ข่าวอัตโนมัติ): เปิดหน้าเพจใน Chrome ของแอป (ล็อกอินเฟสไว้) เลื่อนลงนิดหน่อย เก็บลิงก์โพสต์ล่าสุด
+// shortcut: อ่านแค่โพสต์ที่โหลดมาตอนเลื่อน 3 รอบ (~10 โพสต์) พอสำหรับรอบละ 2 ชม.
+async function fbPagePosts(pageUrl, flow, max = 10) {
+  await flow.connect();
+  const page = await flow.browser.contexts()[0].newPage();
+  try {
+    await page.goto(pageUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+    if (/login|checkpoint/.test(page.url())) throw new Error('Chrome ของแอปยังไม่ได้ล็อกอินเฟส');
+    // ฟีดเฟสโหลดทีละช่วงแล้วเคลียร์ของเก่า → เก็บสะสมทุกครั้งที่เลื่อน · เอาเฉพาะโพสต์ที่มีข้อความ (คลิป/รีลที่แคปชันสั้นข้าม)
+    const got = new Map();
+    let name = '';
+    for (let i = 0; i < 8 && got.size < max; i++) {
+      const r = await page.evaluate(() => [...document.querySelectorAll('[aria-posinset]')].map((e) => ({
+        msg: e.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]')?.innerText || '',
+        href: [...e.querySelectorAll('a[href]')].map((a) => a.href).find((h) => /\/posts\/pfbid|\/posts\/\d|story_fbid|\/videos\/\d|reel\/\d/.test(h)) || '',
+        who: (e.querySelector('[data-ad-rendering-role="profile_name"], h2, h3')?.innerText || '').trim(),
+      })));
+      for (const p of r) {
+        if (p.href && p.msg.length > 60) got.set(p.href.replace(/[?&]__cft__.*$/, '').split('?comment')[0], p.msg);
+        if (p.who) name ||= p.who; // หน้าเพจไม่มีชื่อใน title/h1 → เอาจากหัวโพสต์ของเพจเอง
+      }
+      await page.mouse.wheel(0, 2500); await page.waitForTimeout(2000);
+    }
+    const out = [...got.keys()].slice(0, max);
+    out.pageName = name.split('\n')[0].trim(); // ชื่อเพจไว้ใส่บรรทัดที่มา
+    return out;
+  } finally { await page.close().catch(() => {}); }
+}
+
 function sh(cmd, args, opts, log) {
   return new Promise((res, rej) => {
     const p = spawn(cmd, args, { windowsHide: true, ...opts, env: { ...process.env, PYTHONIOENCODING: 'utf-8', ...(opts?.env || {}) } });
@@ -208,4 +238,4 @@ async function make(root, spec, voice, { log, gpuBusy }) {
   return dir;
 }
 
-module.exports = { voices, writeScript, make, fetchArticle, fetchFacebook, SCENES, animeScenes, addAnchor };
+module.exports = { voices, writeScript, make, fetchArticle, fetchFacebook, fbPagePosts, SCENES, animeScenes, addAnchor };

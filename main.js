@@ -198,7 +198,7 @@ ipcMain.handle('news:make', async (_e, { spec, voice }) => {
 // ข่าวอัตโนมัติ ทุก 2 ชม. 08–22 (newsauto.js) ใช้ newsBusy ตัวเดียวกับปุ่มทำคลิปในหน้าข่าว
 const { NewsAuto } = require('./newsauto');
 const newsAuto = new NewsAuto({
-  userData: app.getPath('userData'), root: ROOT, news, ask: require('./meta').ask, metaWin: () => metaWin, poster, listClips,
+  userData: app.getPath('userData'), root: ROOT, news, ask: require('./meta').ask, metaWin: () => metaWin, poster, listClips, flow,
   log: (m) => { send('newslog', m); fs.appendFileSync(path.join(app.getPath('userData'), 'newsauto.log'), `[${new Date().toLocaleString('th-TH')}] ${m}\n`); },
   busy: () => newsBusy || !!job, setBusy: (b) => { newsBusy = b; if (!b) send('newsdone', newsLast); },
   defaultFace: () => { const f = path.join(ROOT, 'presenter', 'face.png'); return fs.existsSync(f) ? f : ''; },

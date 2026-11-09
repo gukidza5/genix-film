@@ -74,18 +74,30 @@ class NewsAuto {
     try {
       const seen = new Set(readJson(this.seenFile, []));
       log(`ดึงข่าวจาก ${c.sites.length} เว็บ`);
+      const isFb = (u) => /^https?:\/\/([a-z]+\.)?facebook\.com\//i.test(u);
       let cand = [];
       for (const s of c.sites) {
-        try { const l = (await links(s)).filter((u) => !seen.has(u)); cand.push(...l.slice(0, 8)); log(`  ${new URL(s).hostname}: ข่าวใหม่ ${l.length}`); }
-        catch (e) { log(`  ⚠️ ${s}: ${e.message}`); }
+        try {
+          // เพจเฟส = เปิดผ่าน Chrome ของแอป (ล็อกอินเฟส) · เว็บข่าว = RSS/หน้าแรก
+          const all = isFb(s) ? await this.news.fbPagePosts(s, this.flow) : await links(s);
+          const l = all.filter((u) => !seen.has(u));
+          cand.push(...l.slice(0, 5).map((url) => ({ url, page: all.pageName })));
+          log(`  ${all.pageName || new URL(s).hostname}: ข่าวใหม่ ${l.length}`);
+        } catch (e) { log(`  ⚠️ ${s}: ${e.message}`); }
       }
-      cand = [...new Set(cand)];
       if (!cand.length) { log('ไม่มีข่าวใหม่ รอบนี้ข้าม'); return { skipped: 'no news' }; }
-      // อ่านหัวข่าว แล้วให้ AI เลือกข่าวที่คนน่าจะดูที่สุด
+      // อ่านเนื้อข่าว แล้วให้ AI เลือกข่าวที่คนน่าจะดูที่สุด
       const arts = [];
-      for (const u of cand.slice(0, 15)) { try { arts.push({ url: u, text: await this.news.fetchArticle(u) }); } catch {} }
+      for (const { url, page } of cand.slice(0, 16)) {
+        try {
+          let text = isFb(url) ? await this.news.fetchFacebook(url, this.flow) : await this.news.fetchArticle(url);
+          if (page) text = text.replace(/^ที่มา: โพสต์เฟสเพจ .*/, `ที่มา: โพสต์เฟสเพจ ${page}`);
+          if (text.length > 250) arts.push({ url, text });
+        } catch {}
+      }
       if (!arts.length) { log('อ่านเนื้อข่าวไม่ได้สักข่าว รอบนี้ข้าม'); return { skipped: 'unreadable' }; }
-      const title = (a) => (a.text.match(/หัวข้อ: (.*)/) || [])[1] || a.url;
+      // หัวข่าว: หัวข้อจากเว็บ ถ้าไม่มี (โพสต์เฟสล้วน) ใช้บรรทัดแรกของโพสต์
+      const title = (a) => ((a.text.match(/หัวข้อ: (.*)/) || [])[1] || a.text.split('\n').find((l) => l.trim() && !l.startsWith('ที่มา:')) || a.url).slice(0, 140);
       const titles = arts.map((a, i) => `${i}. ${title(a)}`).join('\n');
       // เว็บเดียวลงเรื่องเดิมหลายลิงก์ (บุ๋มคืนที่ 1, 2, …) → บอก AI เรื่องที่ทำไปแล้ว ห้ามซ้ำ
       const done = (c.recent || []).slice(-12).join('\n') || '-';
@@ -95,7 +107,7 @@ class NewsAuto {
       for (const i of order.slice(0, 3)) {
         const a = arts[i];
         seen.add(a.url); fs.writeFileSync(this.seenFile, JSON.stringify([...seen].slice(-2000)));
-        log(`ข่าว: ${(a.text.match(/หัวข้อ: (.*)/) || [])[1] || a.url}`);
+        log(`ข่าว: ${title(a)}`);
         let spec, bad = [], tried = [];
         for (let k = 0; k < 3; k++) {
           spec = await this.news.writeScript(this.metaWin(), a.text, tried);
