@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 
 const REPO = 'gukidza5/genix-film';
 const APP = __dirname;
@@ -37,11 +37,21 @@ async function apply(log = () => {}) {
     const src = fs.readdirSync(tmp).map((d) => path.join(tmp, d)).find((d) => fs.statSync(d).isDirectory());
     if (!src || !fs.existsSync(path.join(src, 'main.js'))) throw new Error('ไฟล์ที่โหลดมาไม่ครบ');
     const oldPkg = fs.readFileSync(path.join(APP, 'package.json'), 'utf8');
+    const same = (rel) => { try { return fs.readFileSync(path.join(src, rel)).equals(fs.readFileSync(path.join(APP, rel))); } catch { return false; } };
+    const aiFiles = ['setup_ai.ps1', ...fs.readdirSync(path.join(src, 'ai'), { recursive: true }).map((f) => path.join('ai', f)).filter((f) => fs.statSync(path.join(src, f)).isFile())];
+    const aiChanged = aiFiles.some((f) => !same(f));
     log('📦 ลงไฟล์ใหม่');
     for (const f of fs.readdirSync(src)) if (!KEEP.has(f)) fs.cpSync(path.join(src, f), path.join(APP, f), { recursive: true, force: true });
     const pkgChanged = JSON.stringify(JSON.parse(oldPkg).dependencies) !== JSON.stringify(JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8')).dependencies);
     if (pkgChanged) { log('📚 ลงไลบรารีเพิ่ม (npm install)'); await run('npm', ['install', '--prefix', `"${APP}"`], { shell: true, timeout: 600000 }).catch((e) => log('⚠️ npm install ไม่ได้: ' + e.message.slice(0, 120))); }
     fs.writeFileSync(VER, info.latest);
+    // ของ AI เปลี่ยน + เครื่องนี้ลง AI ไว้ → เปิดหน้าต่างตัวติดตั้ง AI ให้โหลดเฉพาะที่ขาด (แยกจากแอป แอปเปิดใหม่ได้เลย)
+    const cu = 'C:/AI/ComfyUI_windows_portable/ComfyUI/models/diffusion_models';
+    if (aiChanged && fs.existsSync(cu)) {
+      const pack = fs.existsSync(path.join(cu, 'wan2.2_s2v_14B_fp8_scaled.safetensors')) ? 'full' : 'image';
+      log('🧠 มีของ AI ใหม่ เปิดหน้าต่างลงเพิ่ม');
+      spawn('cmd.exe', ['/c', 'start', '"Genix AI"', 'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-NoExit', '-File', `"${path.join(APP, 'setup_ai.ps1')}"`, '-Pack', pack], { detached: true, stdio: 'ignore', windowsVerbatimArguments: true }).unref();
+    }
     return info;
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }

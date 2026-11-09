@@ -58,7 +58,7 @@ foreach ($m in $models) { if (Get "$HF/$($m[0])/resolve/main/split_files/$($m[1]
 Step 'MuseTalk (ผู้ประกาศ/คนขายปากขยับ)'
 $mt = "$AI\MuseTalk"
 $py311 = "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe"
-if (-not (Test-Path $py311)) { WG 'Python.Python.3.11' }
+if (-not (Test-Path "$mt\venv\Scripts\python.exe") -and -not (Test-Path $py311)) { WG 'Python.Python.3.11' }
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { WG 'Git.Git' }
 if (-not (Test-Path "$mt\.git")) { git clone https://github.com/TMElyralab/MuseTalk.git $mt; git -C $mt checkout -q 0a89dec }
 Copy-Item "$app\ai\musetalk\*" $mt -Recurse -Force   # knf_server.py + แพตช์ไม่ใช้ mmpose ของ kidza
@@ -82,7 +82,7 @@ Pop-Location
 # ---------- F5-TTS-THAI ----------
 Step 'F5-TTS-THAI (เสียงพากย์ไทยหลายเสียง)'
 $py312 = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
-if (-not (Test-Path $py312)) { WG 'Python.Python.3.12' }
+if (-not (Test-Path "$VO\venv\Scripts\python.exe") -and -not (Test-Path $py312)) { WG 'Python.Python.3.12' }
 New-Item -ItemType Directory -Force "$VO\refs" | Out-Null
 Copy-Item "$app\ai\f5\genix_tts.py", "$app\ai\f5\constraints.txt" $VO -Force
 Copy-Item "$app\ai\f5\refs\*" "$VO\refs" -Recurse -Force   # เสียงตัวอย่าง FLEURS (CC BY 4.0) + THAI SER (thaiser\ ชื่อไฟล์ไทย)
