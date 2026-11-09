@@ -12,6 +12,10 @@ const W = 1080, H = 1920;
 const EMO = { กลัว: 'เศร้าแรง', ตะโกน: 'โกรธแรง', ร้องไห้: 'เศร้าแรง' }; // อารมณ์ที่ THAI SER ไม่มี ใช้ระดับเข้มข้นแทน
 const { VO } = require('./paths');
 const F5 = { python: path.join(VO, 'venv/Scripts/python.exe'), py: path.join(VO, 'genix_tts.py'), voices: path.join(VO, 'refs/voices.json') };
+// แนวที่ชื่ออย่างเดียวไม่พอให้ AI เข้าใจ → อธิบายเพิ่มในคำสั่งพล็อต (kidza เพิ่มคำคมบาดใจ 9 พ.ย.)
+const GENRE_HINT = {
+  คำคมบาดใจ: '(เรื่องชีวิตจริงสั้น ๆ ที่สะเทือนใจ เช่น ความรัก ครอบครัว เพื่อนทรยศ คนที่เราให้ใจ แต่ละตอนจบด้วยตัวละครพูดคำคมบาดใจ 1 ประโยคสั้น ๆ จำง่าย แคปไปแชร์ต่อได้ เป็นคำคมที่แต่งใหม่ ไม่ลอกของคนดัง)',
+};
 
 const run = (cmd, args) => new Promise((res, rej) =>
   execFile(cmd, args, { maxBuffer: 64 << 20, windowsHide: true }, (e, out, err) => (e ? rej(new Error(`${cmd}: ${String(err).slice(-400)}`)) : res(out))));
@@ -186,7 +190,7 @@ class Pipeline {
     if (!p.plot) {
       this.step(1, 0, 'ให้ Meta AI แนะนำพล็อต 6 แบบ');
       p.plots = await this.ask(
-        `คิดพล็อตหนังสั้นแนว "${p.genre}" ${p.idea ? `ไอเดียตั้งต้น: ${p.idea}` : ''} มา 6 แบบ สำหรับซีรีส์คลิปแนวตั้ง ${p.eps} ตอน ตอนละ ${p.scenes} ฉาก ภาษาไทย
+        `คิดพล็อตหนังสั้นแนว "${p.genre}" ${GENRE_HINT[p.genre] || ''} ${p.idea ? `ไอเดียตั้งต้น: ${p.idea}` : ''} มา 6 แบบ สำหรับซีรีส์คลิปแนวตั้ง ${p.eps} ตอน ตอนละ ${p.scenes} ฉาก ภาษาไทย
 รูปแบบ: [{"title":"ชื่อเรื่อง","logline":"เรื่องย่อ 2 ประโยค","episodes":["สรุปตอน 1","สรุปตอน 2"]}]`, 'json');
       p.plot = p.plots[0]; // โหมดอัตโนมัติ: เอาแบบแรก
       p.title = p.plot.title;
