@@ -178,3 +178,28 @@ $('btnAll').onclick = action(async () => {
   log('🏁 จบรวดเดียว');
 });
 $('btnOpen').onclick = () => dir && genix.open(dir);
+
+// ข่าวอัตโนมัติ (ทำฝั่งแอป newsauto.js) — หน้านี้แค่ตั้งค่า: เว็บข่าว เปิด/ปิด เสียง+หน้าผู้ประกาศที่เลือกอยู่
+const autoSave = () => genix.newsAutoCfg({
+  sites: $('autoSites').value.split('\n').map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s)),
+  on: $('autoOn').checked, voice: $('voice').value, anchor: face || '',
+}).then(autoShow);
+function autoShow(c) {
+  const next = !c.on ? 'ปิดอยู่' : (() => { const d = new Date(); for (let i = 1; i <= 48; i++) { const t = new Date(+d + i * 1800000); const h = t.getHours(); if (h >= c.start && h <= c.end && !((h - c.start) % c.everyH)) return `รอบถัดไป ~${String(h).padStart(2, '0')}:00`; } return ''; })();
+  $('autoStat').textContent = `${next}${c.last ? ` · ล่าสุด ${new Date(c.last.at).toLocaleString('th-TH')}` : ''}`;
+}
+genix.newsAutoCfg().then((c) => { $('autoSites').value = c.sites.join('\n'); $('autoOn').checked = c.on; autoShow(c); });
+$('autoSites').onchange = autoSave;
+$('voice').addEventListener('change', autoSave);
+$('autoOn').onchange = () => {
+  if ($('autoOn').checked && !confirm('เปิดข่าวอัตโนมัติ? ทุก 2 ชม. 08–22 จะทำคลิปแล้วโพสต์ลงเพจเองโดยไม่ถาม')) $('autoOn').checked = false;
+  autoSave();
+};
+$('btnAutoNow').onclick = action(async () => {
+  await autoSave();
+  log('🤖 ลองข่าวอัตโนมัติ 1 รอบ (ทำคลิป + โพสต์จริง)');
+  const r = await genix.newsAutoRun();
+  if (r?.error) throw new Error(r.error);
+  if (r?.dir) showClip(r.dir);
+  genix.newsAutoCfg().then(autoShow);
+});

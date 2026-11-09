@@ -195,6 +195,17 @@ ipcMain.handle('news:make', async (_e, { spec, voice }) => {
   finally { newsBusy = false; send('newsdone', newsLast); }
   return newsLast;
 });
+// ข่าวอัตโนมัติ ทุก 2 ชม. 08–22 (newsauto.js) ใช้ newsBusy ตัวเดียวกับปุ่มทำคลิปในหน้าข่าว
+const { NewsAuto } = require('./newsauto');
+const newsAuto = new NewsAuto({
+  userData: app.getPath('userData'), root: ROOT, news, ask: require('./meta').ask, metaWin: () => metaWin, poster, listClips,
+  log: (m) => { send('newslog', m); fs.appendFileSync(path.join(app.getPath('userData'), 'newsauto.log'), `[${new Date().toLocaleString('th-TH')}] ${m}\n`); },
+  busy: () => newsBusy || !!job, setBusy: (b) => { newsBusy = b; if (!b) send('newsdone', newsLast); },
+  defaultFace: () => { const f = path.join(ROOT, 'presenter', 'face.png'); return fs.existsSync(f) ? f : ''; },
+});
+newsAuto.start();
+ipcMain.handle('newsauto:cfg', (_e, set) => newsAuto.cfg(set || undefined));
+ipcMain.handle('newsauto:run', () => newsAuto.round().catch((e) => { newsAuto.log('❌ ข่าวอัตโนมัติ: ' + e.message); return { error: e.message }; }));
 ipcMain.handle('post:logins', () => poster.openLogins().catch((e) => ({ error: e.message })));
 // แก้ฉาก: ลบไฟล์ของฉากที่สั่ง (เปลี่ยนคนพูดได้) + ไฟล์ตัดต่อของ EP นั้น แล้ว UI กดทำต่อให้เจนเฉพาะฉากนั้นใหม่
 // specs = [{ ep, scene, speaker? }]

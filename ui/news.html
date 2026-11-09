@@ -38,6 +38,13 @@
   </section>
 
   <section class="card">
+    <h3>🤖 ข่าวอัตโนมัติ</h3>
+    <p class="hint">ทุก 2 ชม. 08:00–22:00 แอปเข้าเว็บข่าวด้านล่าง เลือกข่าวใหม่ 1 ข่าว เขียนบท ทำคลิป แล้วโพสต์ลงเพจด้านล่างเลย (ต้องเปิดแอปค้างไว้) · ใช้เสียง/ผู้ประกาศที่เลือกในข้อ 2</p>
+    <textarea id="autoSites" style="min-height:70px" placeholder="เว็บข่าว บรรทัดละ 1 เว็บ เช่น https://www.thairath.co.th/news/crime"></textarea>
+    <div class="row"><label><input type="checkbox" id="autoOn"> เปิดข่าวอัตโนมัติ</label><button id="btnAutoNow">▶ ลองรอบเดียวตอนนี้</button><span class="hint" id="autoStat"></span></div>
+  </section>
+
+  <section class="card">
     <h3>1. เนื้อข่าว</h3>
     <textarea id="text" placeholder="วางลิงก์ข่าว (เช่น https://women.kapook.com/view/...) แล้วกดปุ่มได้เลย แอปดึงเนื้อข่าวเอง · หรือก๊อปเนื้อข่าวจากสำนักข่าวมาวางก็ได้"></textarea>
     <div class="row"><label style="flex:1">ลิงก์เพจที่จะโพสต์ <input id="fbPage" style="flex:1;min-width:280px" placeholder="https://www.facebook.com/ชื่อเพจ (ว่าง = โปรไฟล์ที่ล็อกอิน)"></label></div>
