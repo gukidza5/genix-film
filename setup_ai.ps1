@@ -85,7 +85,7 @@ $py312 = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
 if (-not (Test-Path $py312)) { WG 'Python.Python.3.12' }
 New-Item -ItemType Directory -Force "$VO\refs" | Out-Null
 Copy-Item "$app\ai\f5\genix_tts.py", "$app\ai\f5\constraints.txt" $VO -Force
-Copy-Item "$app\ai\f5\refs\*" "$VO\refs" -Force   # เสียงตัวอย่าง FLEURS (CC BY 4.0)
+Copy-Item "$app\ai\f5\refs\*" "$VO\refs" -Recurse -Force   # เสียงตัวอย่าง FLEURS (CC BY 4.0) + THAI SER (thaiser\ ชื่อไฟล์ไทย)
 (Get-Content "$app\ai\f5\voices.json" -Raw -Encoding UTF8) -replace 'D:/vo-clone/refs/', 'C:/vo-clone/refs/' | Set-Content "$VO\refs\voices.json" -Encoding UTF8
 if (-not (Test-Path "$VO\venv\Scripts\python.exe")) { & $py312 -m venv "$VO\venv" }
 $fp = "$VO\venv\Scripts\python.exe"
