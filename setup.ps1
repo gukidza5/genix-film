@@ -30,7 +30,18 @@ if ($LASTEXITCODE -eq 0) { Ok 'edge-tts' } else { Write-Host '  ลง edge-tts 
 
 if (-not (Test-Path "$app\node_modules\electron\dist\electron.exe")) {
   Step 'ลงตัวแอป (npm install)'
-  Push-Location $app; npm install; Pop-Location
+  Push-Location $app; npm.cmd install; Pop-Location
+}
+$e = "$app\node_modules\electron"
+if ((Test-Path "$e\package.json") -and -not (Test-Path "$e\dist\electron.exe")) {
+  # Node 24 บางเครื่องแตก zip ของ electron ไม่ออก (ได้แค่ LICENSES) → โหลดเองแล้วแตกด้วย tar
+  Step 'โหลดตัว electron เอง'
+  $v = (Get-Content "$e\package.json" -Raw | ConvertFrom-Json).version; $z = "$env:TEMP\electron-$v.zip"
+  $ProgressPreference = 'SilentlyContinue'
+  Invoke-WebRequest "https://github.com/electron/electron/releases/download/v$v/electron-v$v-win32-x64.zip" -OutFile $z
+  Remove-Item "$e\dist" -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory "$e\dist" | Out-Null
+  tar.exe -xf $z -C "$e\dist"; Set-Content "$e\path.txt" 'electron.exe' -NoNewline; Remove-Item $z
+  if (Test-Path "$e\dist\electron.exe") { Ok "electron $v" } else { Write-Host '  ลง electron ไม่ได้' -ForegroundColor Red }
 }
 
 Step 'ทำไอคอนบนเดสก์ท็อป'
