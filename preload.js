@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('genix', {
   geminiKey: (k) => ipcRenderer.invoke('key:gemini', k),
+  elevenKey: (k) => ipcRenderer.invoke('key:eleven', k),
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateApply: () => ipcRenderer.invoke('update:apply'),
   onUpdLog: (cb) => ipcRenderer.on('updlog', (_e, m) => cb(m)),

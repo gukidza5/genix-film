@@ -87,4 +87,11 @@ if ($k.Trim()) {
   $ud = Join-Path $env:APPDATA 'genix-film'; New-Item -ItemType Directory -Force $ud | Out-Null
   Set-Content (Join-Path $ud 'gemini.key') $k.Trim() -NoNewline; Ok 'บันทึกคีย์ Gemini แล้ว'
 } else { Ok 'ใช้ Meta AI (ฟรี)' }
+Write-Host "`nElevenLabs = เสียงพากย์ข่าวผู้หญิงเล่าแบบเม้าท์กับเพื่อน (เสียง Mali) เป็นธรรมชาติกว่าเสียงฟรี"
+Write-Host 'ใช้เครดิตของบัญชีเจ้าของคีย์ (มีแบบฟรีให้ลอง แต่เอาไปขายของ/หาเงินต้องใช้แผนเสียเงิน) · ไม่ใส่ = ใช้เสียงฟรี'
+$k2 = Read-Host 'วางคีย์ ElevenLabs (ขึ้นต้น sk_) หรือกด Enter ข้าม'
+if ($k2.Trim()) {
+  $ud = Join-Path $env:APPDATA 'genix-film'; New-Item -ItemType Directory -Force $ud | Out-Null
+  Set-Content (Join-Path $ud 'elevenlabs.key') $k2.Trim() -NoNewline; Ok 'บันทึกคีย์ ElevenLabs แล้ว'
+} else { Ok 'ใช้เสียงพากย์ฟรี' }
 Write-Host "`nเสร็จหมดแล้ว เปิดแอปจากไอคอน Genix Film บนเดสก์ท็อป" -ForegroundColor Green

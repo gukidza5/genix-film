@@ -10,6 +10,7 @@ const { LipSync } = require('./lipsync');
 
 const DIR = path.join(__dirname, 'news');
 const { AI, VO } = require('./paths');
+const eleven = require('./eleven');
 const SCENES = {
   intro: 'เปิดเรื่อง ตัวละครหญิงยืนหน้าจอห้องข่าว', arrest: 'หน้าบ้าน มีไมค์นักข่าว+ตำรวจ (จับกุม/บุกค้น)', charges: 'ห้องมืด ใช้กับ chips (ข้อหา/ประเด็น)',
   map: 'แผนที่ปักหมุด 4 จุด', money: 'ห้องข่าวโล่ง ใช้กับ card ตัวเลขใหญ่', personal: 'กระเป๋า+รถ+ตัวละคร (ใช้เงินผิดทาง) ใช้กับ card',
@@ -18,7 +19,7 @@ const SCENES = {
 const EMO = ['ปกติ', 'โกรธ', 'โกรธแรง', 'ดีใจ', 'เศร้า', 'หงุดหงิด'];
 
 function voices() {
-  const list = [{ id: 'edge', name: 'Niwat (edge-tts ชาย)' }];
+  const list = [...(eleven.key() ? eleven.VOICES.map((v) => ({ id: 'eleven:' + v.id, name: v.name })) : []), { id: 'edge', name: 'Niwat (edge-tts ชาย)' }];
   try {
     for (const v of JSON.parse(fs.readFileSync(path.join(VO, 'refs', 'voices.json'), 'utf8'))) if (v.emo) list.push({ id: v.id, name: `${v.id} อายุ ${v.age}` });
   } catch {}
@@ -31,10 +32,10 @@ async function writeScript(metaWin, text, bad = []) {
 กฎเหล็ก: ใช้เฉพาะข้อเท็จจริง ตัวเลข วันที่ ที่อยู่ในเนื้อข่าวด้านล่างเท่านั้น ห้ามเดาหรือเติมเอง ห้ามเติมปีถ้าข่าวไม่ได้เขียนปี ห้ามคำนวณตัวเลขใหม่ (บวก ลบ แปลงหน่วย) ·${redo} คนที่ยังไม่มีคำพิพากษาให้เรียก "ผู้ต้องหา"/"ถูกกล่าวหา" และใช้ "ตำรวจแถลงว่า" กับตัวเลขของตำรวจ · ภาษาสุภาพ ไม่ใช้ กู/มึง
 ทำ 8–10 ช็อต แต่ละช็อตเลือก scene จาก: ${Object.entries(SCENES).map(([k, v]) => `${k}=${v}`).join(' | ')}
 ช่อง: head=หัวข้อบนจอสั้นๆ (ใช้ <b>คำ</b> ไฮไลต์เหลือง, <br> ขึ้นบรรทัด) · sub=ซับล่างสั้นๆ · tag=วันที่ (ถ้ามี) · chips=รายการสั้น 2–4 อัน (ถ้ามี) · card=[ป้าย, ตัวเลข, หน่วย] (ถ้าเป็นช็อตตัวเลข)
-vo=คำพูดพากย์ ≤ 110 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
+vo=คำพูดพากย์ ≤ 110 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล แต่เล่าแบบผู้หญิงเม้าท์ข่าวกับเพื่อนสาว (แก / อะ / เลยนะ / จริงดิ) ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมตรงจุดสำคัญ ช็อตละ 1–2 แท็ก เลือกจาก [excited] [whispers] [surprised] [laughs] [serious] [sighs] คำที่อยากเน้นให้เว้นวรรคทีละคำ ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
 img=ภาษาอังกฤษ บรรยายภาพฉากการ์ตูนอนิเมะของช็อตนี้ (สถานที่ คน การกระทำ อารมณ์) ตัวละครเป็นคนทั่วไปไม่เหมือนคนจริง ห้ามมีตัวหนังสือในภาพ · sfx เลือกจาก impact_big/whoosh_cine/whoosh_fast/popclick/bass_hit/hit_drum หรือ null · ช็อตแรกเปิดด้วยประโยคที่ทำให้อยากดูต่อ ช็อตสุดท้าย scene=cta ถามคนดูให้คอมเมนต์
 ตอบเป็น JSON อย่างเดียว คั่นด้วย GENIX_START ... GENIX_END:
-GENIX_START{"title":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
+GENIX_START{"title":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_el":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
 
 เนื้อข่าว:
 ${text}`, { want: 'json', timeoutMs: 240000 });
@@ -173,7 +174,20 @@ async function make(root, spec, voice, { log, gpuBusy }) {
   await sh('node', [path.join(DIR, 'render.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log);
   await animeScenes(dir, spec, log).catch((e) => log('⚠️ ฉากอนิเมะไม่ได้ ใช้แบบเวกเตอร์: ' + e.message));
   let sub = '';
-  if (voice !== 'edge') {
+  if (voice.startsWith('eleven:')) {
+    log('🎙️ พากย์ด้วย ElevenLabs (Mali เม้าท์)');
+    try {
+      fs.mkdirSync(path.join(dir, 'el'), { recursive: true });
+      for (const [k, s] of spec.shots.entries()) {
+        const mp3 = path.join(dir, 'el', `vo${k}.mp3`), wav = path.join(dir, 'el', `vo${k}.wav`);
+        if (!fs.existsSync(wav)) {
+          await eleven.tts(s.vo_el || s.vo, mp3, voice.slice(7));
+          await sh('ffmpeg', ['-v', 'error', '-y', '-i', mp3, '-ar', '44100', wav], {}, log);
+        }
+      }
+      sub = 'el';
+    } catch (e) { log('⚠️ ElevenLabs ไม่ได้ ใช้เสียง Niwat แทน: ' + e.message.slice(0, 200)); voice = 'edge'; }
+  } else if (voice !== 'edge') {
     log(`🎙️ พากย์ด้วย ${voice}${gpuBusy() ? ' (CPU เพราะการ์ดจอทำละครอยู่ — ช้าหน่อย)' : ''}`);
     sub = 'f5';
     await sh('python', [path.join(DIR, 'f5job.py'), dir, voice, sub], {}, log);

@@ -26,6 +26,9 @@ showClip(LS('dir'));
 
 (async () => {
   for (const v of await genix.newsVoices()) $('voice').add(new Option(v.name, v.id));
+  // มีคีย์ ElevenLabs = ใช้ Mali เป็นหลัก (kidza ตั้ง 9 พ.ย.) ตั้งครั้งเดียว ทีหลังเลือกเองได้
+  const el = [...$('voice').options].find((o) => o.value.startsWith('eleven:'));
+  if (el && !localStorage.newsVoiceEl) { localStorage.newsVoice = el.value; localStorage.newsVoiceEl = '1'; }
   $('voice').value = localStorage.newsVoice || 'serชาย001';
   if (!$('voice').value) $('voice').selectedIndex = 0;
   const s = await genix.postSettings();

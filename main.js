@@ -174,6 +174,7 @@ ipcMain.handle('post:settings', (_e, s) => (s ? poster.saveSettings(s) : poster.
 ipcMain.handle('post:run', (_e, { clip, platforms }) => poster.post(clip, platforms));
 ipcMain.handle('news:voices', () => news.voices());
 ipcMain.handle('key:gemini', (_e, k) => (k === undefined || k === null ? hasGeminiKey() : setGeminiKey(k)));
+ipcMain.handle('key:eleven', (_e, k) => { const el = require('./eleven'); return k === undefined || k === null ? !!el.key() : el.setKey(k); });
 ipcMain.handle('update:check', () => updater.check().catch((e) => ({ error: e.message })));
 ipcMain.handle('update:apply', async () => {
   if (job) return { error: 'กำลังทำงานอยู่ รอให้เสร็จก่อนค่อยอัพเดท' };

@@ -16,6 +16,8 @@
   <button id="updBtn" disabled>🔄 เช็คอัพเดท…</button>
   <button id="keyBtn">🔑 คีย์ Gemini</button>
   <div class="k" id="keyBox"><input id="keyIn" type="password" placeholder="วางคีย์ AIza… (ว่าง = ลบ)"><button id="keySave" style="width:auto">บันทึก</button></div>
+  <button id="elBtn">🔑 คีย์ ElevenLabs</button>
+  <div class="k" id="elBox"><input id="elIn" type="password" placeholder="วางคีย์ sk_… (ว่าง = ลบ)"><button id="elSave" style="width:auto">บันทึก</button></div>
   <small id="updMsg"></small>`;
   side.appendChild(box);
   const $ = (id) => box.querySelector('#' + id);
@@ -45,6 +47,15 @@
   $('keySave').onclick = async () => {
     keyLabel(await window.genix.geminiKey($('keyIn').value));
     $('keyIn').value = ''; $('keyBox').classList.remove('on');
+  };
+
+  const elLabel = (has) => { $('elBtn').textContent = has ? '🔑 คีย์ ElevenLabs: ใส่แล้ว' : '🔑 ใส่คีย์ ElevenLabs (เสียงข่าว Mali)'; };
+  window.genix.elevenKey?.().then(elLabel);
+  $('elBtn').onclick = () => $('elBox').classList.toggle('on');
+  $('elSave').onclick = async () => {
+    elLabel(await window.genix.elevenKey($('elIn').value));
+    $('elIn').value = ''; $('elBox').classList.remove('on');
+    if (location.pathname.endsWith('news.html')) location.reload(); // ให้รายการเสียงข่าวขึ้น Mali
   };
 
   check();
