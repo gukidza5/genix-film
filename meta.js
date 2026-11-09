@@ -158,7 +158,10 @@ async function gemini(prompt, files = [], timeoutMs = 180000) {
     try { return JSON.parse(text); } catch {}
     const got = extractJson(`${START}${text}${END}`);
     if (got) return got;
-    throw new Error('Gemini ส่ง JSON เพี้ยนกลับมา: ' + text.slice(0, 200));
+    // ว่าง/ขาดกลางทาง (MAX_TOKENS, SAFETY, …) → ลองรุ่นถัดไปก่อน ค่อยยอมแพ้
+    const why = j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || 'ไม่ทราบสาเหตุ';
+    if (!last) continue;
+    throw new Error(`Gemini ส่ง JSON เพี้ยนกลับมา (${why}, ${model}): ` + (text.slice(0, 200) || '(ว่าง)'));
   }
 }
 
