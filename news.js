@@ -9,7 +9,7 @@ const comfy = require('./comfy');
 const { LipSync } = require('./lipsync');
 
 const DIR = path.join(__dirname, 'news');
-const VO = 'D:\\vo-clone';
+const { AI, VO } = require('./paths');
 const SCENES = {
   intro: 'เปิดเรื่อง ตัวละครหญิงยืนหน้าจอห้องข่าว', arrest: 'หน้าบ้าน มีไมค์นักข่าว+ตำรวจ (จับกุม/บุกค้น)', charges: 'ห้องมืด ใช้กับ chips (ข้อหา/ประเด็น)',
   map: 'แผนที่ปักหมุด 4 จุด', money: 'ห้องข่าวโล่ง ใช้กับ card ตัวเลขใหญ่', personal: 'กระเป๋า+รถ+ตัวละคร (ใช้เงินผิดทาง) ใช้กับ card',
@@ -115,7 +115,7 @@ const SCENE_EN = {
   sorry: 'a person bowing at a press conference with many microphones', cta: 'a hand holding a smartphone, question mark mood, cozy lighting',
 };
 async function animeScenes(dir, spec, log) {
-  if (!fs.existsSync('D:\\AI\\ComfyUI_windows_portable')) return log('ℹ️ เครื่องนี้ไม่มี ComfyUI ใช้ฉากเวกเตอร์'), 0;
+  if (!fs.existsSync(path.join(AI, 'ComfyUI_windows_portable'))) return log('ℹ️ เครื่องนี้ไม่มี ComfyUI ใช้ฉากเวกเตอร์'), 0;
   log('🎨 วาดฉากอนิเมะ (ComfyUI ในเครื่อง)');
   let ok = 0;
   for (const [k, s] of spec.shots.entries()) {

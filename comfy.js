@@ -6,7 +6,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const HOST = 'http://127.0.0.1:8188';
-const ROOT = 'D:\\AI\\ComfyUI_windows_portable';
+const ROOT = path.join(require('./paths').AI, 'ComfyUI_windows_portable');
 const COMFY = path.join(ROOT, 'ComfyUI');
 const FPS = 16;
 const SIZE = { '9:16': [480, 832, 720, 1248], '16:9': [832, 480, 1248, 720], '1:1': [640, 640, 1024, 1024] }; // วิดีโอ w,h + รูป w,h

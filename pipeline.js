@@ -10,7 +10,8 @@ const STAGES = ['คิดพล็อต', 'แคสต์', 'ถ่ายร�
 const VOICE = { male: 'th-TH-NiwatNeural', female: 'th-TH-PremwadeeNeural' };
 const W = 1080, H = 1920;
 const EMO = { กลัว: 'เศร้าแรง', ตะโกน: 'โกรธแรง', ร้องไห้: 'เศร้าแรง' }; // อารมณ์ที่ THAI SER ไม่มี ใช้ระดับเข้มข้นแทน
-const F5 = { python: 'D:/vo-clone/venv/Scripts/python.exe', py: 'D:/vo-clone/genix_tts.py', voices: 'D:/vo-clone/refs/voices.json' };
+const { VO } = require('./paths');
+const F5 = { python: path.join(VO, 'venv/Scripts/python.exe'), py: path.join(VO, 'genix_tts.py'), voices: path.join(VO, 'refs/voices.json') };
 
 const run = (cmd, args) => new Promise((res, rej) =>
   execFile(cmd, args, { maxBuffer: 64 << 20, windowsHide: true }, (e, out, err) => (e ? rej(new Error(`${cmd}: ${String(err).slice(-400)}`)) : res(out))));

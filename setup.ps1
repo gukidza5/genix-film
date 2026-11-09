@@ -55,5 +55,36 @@ Refresh-Path
 $bad = @('ffmpeg', 'ffprobe', 'python', 'node') | ? { -not (Has $_) }
 python -c "import edge_tts" 2>$null; if ($LASTEXITCODE -ne 0) { $bad += 'edge-tts' }
 if ($bad) { Write-Host "ยังขาด: $($bad -join ', ')  ลองรีเครื่องแล้วรันใหม่" -ForegroundColor Red }
-else { Write-Host "`nเสร็จ เปิดแอปจากไอคอน Genix Film บนเดสก์ท็อปได้เลย" -ForegroundColor Green }
-Write-Host '(ฉากอนิเมะ / ปากขยับ / เสียง F5 ต้องใช้ ComfyUI, MuseTalk, F5 ที่ D:\AI และ D:\vo-clone — ไม่มีแอปก็ใช้แบบธรรมดาแทน)'
+else { Ok 'ของพื้นฐานครบ' }
+
+# ---------- AI ในเครื่อง (ฟรี แต่หนัก) ----------
+$gpu = Get-CimInstance Win32_VideoController | ? Name -like '*NVIDIA*' | Select-Object -First 1
+$vram = 0; try { $vram = [int]((nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>$null | Select-Object -First 1) / 1024) } catch {}
+$haveAI = (Test-Path 'D:\AI\ComfyUI_windows_portable') -or (Test-Path 'C:\AI\ComfyUI_windows_portable')
+Write-Host "`n================ AI ในเครื่อง (ฟรี) ================" -ForegroundColor Cyan
+Write-Host 'ฉากอนิเมะ + ผู้ประกาศ/คนขายปากขยับ + เสียงพากย์ไทยหลายเสียง แบบเครื่อง kidza'
+Write-Host "การ์ดจอเครื่องนี้: $(if ($gpu) { "$($gpu.Name) ${vram}GB" } else { 'ไม่ใช่ NVIDIA' })"
+$free = [math]::Round((Get-PSDrive C).Free / 1GB)
+Write-Host "ที่ว่างไดรฟ์ C: ${free}GB"
+if ($haveAI) { Write-Host 'มี AI ในเครื่องอยู่แล้ว ข้ามได้' -ForegroundColor Green }
+elseif ($gpu -and $vram -ge 11) { Write-Host 'แนะนำ: ลงแบบครบ (เหมือนเครื่อง kidza)' -ForegroundColor Green }
+else { Write-Host 'แนะนำ: ไม่ต้องลง — การ์ดจอไม่ถึง (ต้อง NVIDIA 12GB ขึ้นไป) ลงไปก็ช้ามากหรือรันไม่ได้' -ForegroundColor Red }
+Write-Host '  1 = ลงครบ รูป+วิดีโอ+ปากขยับ+เสียง (~110GB)'
+Write-Host '  2 = ลงแค่รูปอนิเมะ+ปากขยับ+เสียง ไม่เอาวิดีโอ (~45GB)'
+Write-Host '  3 = ไม่ลง (ใช้ฉากเวกเตอร์ รูปนิ่ง เสียง Niwat)'
+$c = Read-Host 'เลือก 1/2/3'
+if ($c -eq '1' -or $c -eq '2') {
+  Write-Host 'เริ่มโหลด ใช้เวลานาน ปิดหน้าต่างกลางทางได้ รันใหม่จะโหลดต่อจากเดิม'
+  & "$app\setup_ai.ps1" -Pack $(if ($c -eq '1') { 'full' } else { 'image' })
+}
+
+# ---------- ตัวเสียเงิน (เลือกเอง) ----------
+Write-Host "`n================ ตัวเสียเงิน (ไม่บังคับ) ================" -ForegroundColor Cyan
+Write-Host 'Gemini วาดรูปสินค้า/ฉากได้เหมือนกว่า Meta และเขียนบทเร็วกว่า แต่คิดเงินต่อรูปเข้าบัตรเจ้าของคีย์'
+Write-Host 'ไม่ใส่ = ใช้ Meta AI (ฟรี ล็อกอินเฟสในแอป) · ใส่ทีหลังได้ที่ปุ่ม 🔑 มุมซ้ายล่างของแอป'
+$k = Read-Host 'วางคีย์ Gemini (ขึ้นต้น AIza) หรือกด Enter ข้าม'
+if ($k.Trim()) {
+  $ud = Join-Path $env:APPDATA 'genix-film'; New-Item -ItemType Directory -Force $ud | Out-Null
+  Set-Content (Join-Path $ud 'gemini.key') $k.Trim() -NoNewline; Ok 'บันทึกคีย์ Gemini แล้ว'
+} else { Ok 'ใช้ Meta AI (ฟรี)' }
+Write-Host "`nเสร็จหมดแล้ว เปิดแอปจากไอคอน Genix Film บนเดสก์ท็อป" -ForegroundColor Green

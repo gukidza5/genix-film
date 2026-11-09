@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const DIR = 'D:\\AI\\MuseTalk';
+const DIR = path.join(require('./paths').AI, 'MuseTalk');
 const PY = path.join(DIR, 'venv', 'Scripts', 'python.exe');
 const PORT = 8811;
 const URL = `http://127.0.0.1:${PORT}`;

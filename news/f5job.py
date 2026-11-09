@@ -3,7 +3,8 @@
 import json, os, sys
 job, vid, sub = sys.argv[1:4]
 spec = json.load(open(os.path.join(job, 'spec.json'), encoding='utf-8'))
-v = next(x for x in json.load(open(r'D:\vo-clone\refs\voices.json', encoding='utf-8')) if x['id'] == vid)
+VO = next((p for p in (r'D:\vo-clone', r'C:\vo-clone') if os.path.exists(p)), r'D:\vo-clone')  # เครื่องอื่นลงที่ C:
+v = next(x for x in json.load(open(os.path.join(VO, 'refs', 'voices.json'), encoding='utf-8')) if x['id'] == vid)
 od = os.path.abspath(os.path.join(job, sub)); os.makedirs(od, exist_ok=True)
 items = []
 for k, s in enumerate(spec['shots']):
