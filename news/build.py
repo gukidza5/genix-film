@@ -4,7 +4,7 @@ import json, os, subprocess, sys, wave, contextlib
 
 job = sys.argv[1]
 spec = json.load(open(os.path.join(job, 'spec.json'), encoding='utf-8'))
-SFX = r'C:\Users\kidza\Downloads\knf-tiktok-tools\sfx-real'
+SFX = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sfx')  # ก๊อปมาจาก knf-tiktok-tools\sfx-real (Mixkit) ให้เครื่องเพื่อนมีด้วย
 tmp = os.path.join(job, 'tmp'); os.makedirs(tmp, exist_ok=True)
 vodir = sys.argv[2] if len(sys.argv) > 2 else None
 vo = lambda k: os.path.join(job, vodir, f'vo{k}.wav') if vodir else os.path.join(tmp, f'vo{k}.mp3')

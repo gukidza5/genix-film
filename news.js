@@ -115,6 +115,7 @@ const SCENE_EN = {
   sorry: 'a person bowing at a press conference with many microphones', cta: 'a hand holding a smartphone, question mark mood, cozy lighting',
 };
 async function animeScenes(dir, spec, log) {
+  if (!fs.existsSync('D:\\AI\\ComfyUI_windows_portable')) return log('ℹ️ เครื่องนี้ไม่มี ComfyUI ใช้ฉากเวกเตอร์'), 0;
   log('🎨 วาดฉากอนิเมะ (ComfyUI ในเครื่อง)');
   let ok = 0;
   for (const [k, s] of spec.shots.entries()) {
