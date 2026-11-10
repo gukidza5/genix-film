@@ -193,3 +193,20 @@ $('btnMeta').onclick = $('navMeta').onclick = () => genix.showMeta();
 
 renderStepper(0); setRunning(false); loadProjects();
 checkMeta(); setInterval(checkMeta, 15000);
+
+// ปลายทางโพสต์หนังสั้น (แยกจากเพจข่าว) → post.json dest.film
+(async () => {
+  const s = await genix.postSettings();
+  const d = s.dest?.film || { platforms: [] };
+  document.querySelectorAll('.dpf').forEach((b) => (b.checked = (d.platforms || []).includes(b.value)));
+  $('dFb').value = d.fbPage || ''; $('dTt').value = d.ttAccount || ''; $('dYt').value = d.ytChannel || '';
+  const save = async () => {
+    const cur = (await genix.postSettings()).dest || {};
+    genix.postSettings({ dest: { ...cur, film: {
+      platforms: [...document.querySelectorAll('.dpf:checked')].map((b) => b.value),
+      fbPage: $('dFb').value.trim(), ttAccount: $('dTt').value.trim(), ytChannel: $('dYt').value.trim(),
+    } } });
+  };
+  document.querySelectorAll('.dpf, #dFb, #dTt, #dYt').forEach((e) => (e.onchange = save));
+  if (!s.dest?.film) save(); // ยังไม่เคยตั้ง = สร้างแบบไม่โพสต์ไว้ก่อน กันหลุดไปเพจข่าว
+})();

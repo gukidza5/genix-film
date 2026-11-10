@@ -85,9 +85,11 @@ class Poster {
   // โพสต์ 1 คลิปขึ้นแพลตฟอร์มที่เลือก — คืน { platform: 'ok'|'dry'|'error: ...' }
   post(clip, platforms) {
     const run = async () => {
-      const s = this.settings();
+      // ปลายทางแยกตามชนิดคลิป (kidza 10 พ.ย.: หนังสั้นหลุดไปลงเพจข่าว) — dest.film = ตั้งในหน้า KNF Film · ไม่ตั้ง = ใช้ค่ากลาง (เพจข่าว)
+      const g = this.settings(), d = g.dest?.[clip.mode];
+      const s = d ? { ...g, fbPage: d.fbPage || '', ytChannel: d.ytChannel || '' } : g;
       const res = {};
-      for (const pf of platforms || Object.keys(s.platforms).filter((k) => s.platforms[k])) {
+      for (const pf of platforms || (d ? d.platforms || [] : Object.keys(s.platforms).filter((k) => s.platforms[k]))) {
         if (clip.posted?.[pf] && !String(clip.posted[pf]).startsWith('error') && clip.posted[pf] !== 'dry') { res[pf] = clip.posted[pf]; continue; }
         this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}`);
         let page;
