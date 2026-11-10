@@ -34,7 +34,14 @@ async function renderPng(spec) {
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
-const send = (ch, data) => ui && !ui.isDestroyed() && ui.webContents.send(ch, data);
+// บันทึกทุกอย่างที่โชว์ในหน้าแอปลงไฟล์ด้วย (userData/app.log) ไว้ดูย้อนหลังตอนแอปทำงานเองแล้วพัง
+const LOGF = path.join(app.getPath('userData'), 'app.log');
+const send = (ch, data) => {
+  if (/^(log|newslog|postlog|error|stopped|jobstart|done)$/.test(ch)) {
+    try { fs.appendFileSync(LOGF, `[${new Date().toLocaleString('th-TH')}] ${ch}: ${typeof data === 'string' ? data : JSON.stringify(data).slice(0, 300)}\n`); } catch {}
+  }
+  return ui && !ui.isDestroyed() && ui.webContents.send(ch, data);
+};
 
 // กดไอคอนซ้ำตอนเปิดอยู่ = เด้งหน้าต่างเดิมขึ้นมา ไม่เปิดตัวที่ 2 (ไม่งั้นสองตัวแย่งโปรไฟล์ Meta/งานกัน)
 if (!app.requestSingleInstanceLock()) app.quit();
