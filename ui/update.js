@@ -18,8 +18,8 @@
   <div class="k" id="keyBox"><input id="keyIn" type="password" placeholder="วางคีย์ AIza… (ว่าง = ลบ)"><button id="keySave" style="width:auto">บันทึก</button></div>
   <button id="elBtn">🔑 คีย์ ElevenLabs</button>
   <div class="k" id="elBox"><input id="elIn" type="password" placeholder="วางคีย์ sk_… (ว่าง = ลบ)"><button id="elSave" style="width:auto">บันทึก</button></div>
-  <button id="lnBtn">🔔 แจ้งเตือน LINE</button>
-  <div class="k" id="lnBox"><input id="lnIn" type="password" placeholder="Channel access token ของ LINE OA (ว่าง = ปิด)"><button id="lnSave" style="width:auto">บันทึก</button></div>
+  <button id="lnBtn">🔔 แจ้งเตือน</button>
+  <div class="k" id="lnBox"><input id="lnIn" type="password" placeholder="ลิงก์ webhook ห้องดิส หรือ token LINE (ว่าง = ปิด)"><button id="lnSave" style="width:auto">บันทึก</button></div>
   <small id="updMsg"></small>`;
   side.appendChild(box);
   const $ = (id) => box.querySelector('#' + id);
@@ -60,12 +60,12 @@
     if (location.pathname.endsWith('news.html')) location.reload(); // ให้รายการเสียงข่าวขึ้น Mali
   };
 
-  const lnLabel = (has) => { $('lnBtn').textContent = has ? '🔔 แจ้งเตือน LINE: เปิดอยู่' : '🔔 เปิดแจ้งเตือน LINE (ข่าวอัตโนมัติ)'; };
+  const lnLabel = (has) => { $('lnBtn').textContent = has ? '🔔 แจ้งเตือน: เปิดอยู่' : '🔔 เปิดแจ้งเตือน ดิส/LINE (ข่าวอัตโนมัติ)'; };
   window.genix.lineKey?.().then(lnLabel);
   $('lnBtn').onclick = () => $('lnBox').classList.toggle('on');
   $('lnSave').onclick = async () => {
     const r = await window.genix.lineKey($('lnIn').value); // ใส่ token = ส่งข้อความทดสอบเข้า LINE ทันที
-    lnLabel(r?.on); msg.textContent = r?.error ? '⚠️ ' + r.error : r?.on ? '✅ ส่งข้อความทดสอบเข้า LINE แล้ว' : 'ปิดแจ้งเตือน LINE แล้ว';
+    lnLabel(r?.on); msg.textContent = r?.error ? '⚠️ ' + r.error : r?.on ? '✅ ส่งข้อความทดสอบแล้ว ไปดูในดิส/LINE' : 'ปิดแจ้งเตือนแล้ว';
     $('lnIn').value = ''; $('lnBox').classList.remove('on');
   };
 

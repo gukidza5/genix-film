@@ -179,7 +179,7 @@ ipcMain.handle('key:line', async (_e, k) => {
   if (k === undefined || k === null) return n.hasToken();
   const on = n.setToken(k);
   if (!on) return { on };
-  try { await n.line('🔔 Genix Film: เชื่อมแจ้งเตือน LINE แล้ว ข่าวอัตโนมัติจะแจ้งทุกรอบ + สรุปยอดวิวทุกคืน 23:30'); return { on }; }
+  try { await n.line('🔔 Genix Film: เชื่อมแจ้งเตือนแล้ว ข่าวอัตโนมัติจะแจ้งทุกรอบ + สรุปยอดวิวทุกคืน 23:30'); return { on }; }
   catch (e) { return { on, error: e.message }; }
 });
 ipcMain.handle('key:eleven', (_e, k) => { const el = require('./eleven'); return k === undefined || k === null ? !!el.key() : el.setKey(k); });
