@@ -5,7 +5,8 @@ const path = require('path');
 
 const VOICES = [{ id: '7XW5JhaNn90bnFojQ5DA', name: 'Mali — ผู้หญิงเม้าท์กับเพื่อน (ElevenLabs ใช้เครดิต)' }];
 const keyFile = () => path.join(require('electron').app.getPath('userData'), 'elevenlabs.key');
-const key = () => { try { return fs.readFileSync(keyFile(), 'utf8').replace(/^﻿/, '').trim(); } catch { return ''; } };
+let lastErr = '';
+const key = () => { try { return fs.readFileSync(keyFile(), 'utf8').replace(/^﻿/, '').trim(); } catch (e) { lastErr = e.message; return ''; } };
 const setKey = (k) => { k = String(k || '').trim(); if (k) fs.writeFileSync(keyFile(), k); else fs.rmSync(keyFile(), { force: true }); return !!key(); };
 
 async function tts(text, out, voiceId, { stability = 0.32, similarity = 0.75, timeoutMs = 120000 } = {}) {
@@ -21,4 +22,4 @@ async function tts(text, out, voiceId, { stability = 0.32, similarity = 0.75, ti
   return out;
 }
 
-module.exports = { VOICES, key, setKey, tts };
+module.exports = { VOICES, key, setKey, tts, keyFile, lastErr: () => lastErr };
