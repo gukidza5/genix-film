@@ -197,7 +197,9 @@ $('btnOpen').onclick = () => dir && genix.open(dir);
 
 // ข่าวอัตโนมัติ (ทำฝั่งแอป newsauto.js) — หน้านี้แค่ตั้งค่า: เว็บข่าว เปิด/ปิด เสียง+หน้าผู้ประกาศที่เลือกอยู่
 const autoSave = () => genix.newsAutoCfg({
-  sites: $('autoSites').value.split('\n').map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s)),
+  // รับได้ทั้งลิงก์เต็มและแบบพิมพ์สั้น "facebook.com/HKS2017 (โหนกระแส)" — ตัดวงเล็บ/คำอธิบายทิ้ง เติม https ให้
+  sites: $('autoSites').value.split('\n').map((s) => (s.match(/(?:https?:\/\/)?(?:www\.)?[\w.-]+\.[a-z]{2,}\/\S*/i) || [''])[0])
+    .filter(Boolean).map((s) => (/^https?:\/\//i.test(s) ? s : 'https://www.' + s.replace(/^www\./, ''))),
   on: $('autoOn').checked, voice: $('voice').value, anchor: face || '',
 }).then(autoShow);
 function autoShow(c) {
