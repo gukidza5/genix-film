@@ -53,11 +53,13 @@ class NewsAuto {
     if (set) fs.writeFileSync(this.cfgFile, JSON.stringify({ ...this.cfg(), ...set }, null, 2));
     return { ...def, ...readJson(this.cfgFile, {}) };
   }
-  // รอบเวลา: 08,10,…,22 (start + everyH*n) ตามนาฬิกาเครื่อง · เปิดแอปช้ากว่ารอบ = ทำรอบนั้นทันทีถ้ายังอยู่ในชั่วโมงนั้น
+  // รอบเวลา: 08,10,…,22 (start + everyH*n) ตามนาฬิกาเครื่อง · คืนรอบล่าสุดที่ถึงเวลาแล้ว (ถึงเที่ยงคืน)
+  // แอปติดทำหนัง/เปิดช้า → รอบนั้นยังค้างอยู่ ทำทันทีที่ว่าง (10 พ.ย. รอบ 8 โมงหายเพราะติดทำหนัง)
   slotNow(c = this.cfg(), d = new Date()) {
     const h = d.getHours();
-    if (h < c.start || h > c.end || (h - c.start) % c.everyH) return '';
-    return `${d.toISOString().slice(0, 10)}-${h}`;
+    if (h < c.start) return '';
+    const s = Math.min(c.end, c.start + Math.floor((h - c.start) / c.everyH) * c.everyH);
+    return `${d.toLocaleDateString('sv')}-${s}`;
   }
   start() { this.timer = setInterval(() => this.tick().catch((e) => this.log('❌ ข่าวอัตโนมัติ: ' + e.message)), 60000); }
   async tick() {
