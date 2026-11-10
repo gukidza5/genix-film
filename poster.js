@@ -298,8 +298,11 @@ const DRIVERS = {
     await page.locator('tp-yt-paper-radio-button[name="PUBLIC"]').click();
     if (dryRun) { await page.bringToFront(); return 'dry'; }
     await page.locator('#done-button').click();
-    await page.locator('ytcp-video-share-dialog, ytcp-uploads-still-processing-dialog').first().waitFor({ timeout: 300000 })
-      .catch(() => { throw new Error('กดเผยแพร่แล้วไม่ขึ้นหน้าต่างยืนยัน (อาจยังอัปไม่เสร็จ/ติดเช็คลิขสิทธิ์)'); });
+    // ต้องรอกล่อง #dialog ข้างใน: ตัว ytcp-…-dialog เองกว้าง 0 Playwright เลยมองว่าไม่โชว์ (10 พ.ย. ฟ้องพลาด 2 รอบทั้งที่คลิปขึ้นแล้ว)
+    const ok = page.locator('ytcp-video-share-dialog tp-yt-paper-dialog, ytcp-uploads-still-processing-dialog tp-yt-paper-dialog').first();
+    await ok.waitFor({ timeout: 300000 })
+      .catch(() => { throw new Error('กดเผยแพร่แล้วไม่ขึ้นหน้าต่างยืนยัน 5 นาที (อาจยังอัปไม่เสร็จ/ติดเช็คลิขสิทธิ์)'); });
+    await ok.locator('#close-button').click({ timeout: 5000 }).catch(() => {}); // ปิดหน้าต่าง "กำลังประมวลผล" ไม่ให้ค้างจอ
     return 'ok';
   },
 

@@ -4,3 +4,4 @@ gemini.key
 .version
 *.bak*
 test-out-*/
+__pycache__/

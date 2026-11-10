@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { ask } = require('./meta');
+const { ask, gemini, hasGeminiKey } = require('./meta');
 const comfy = require('./comfy');
 const { LipSync } = require('./lipsync');
 
@@ -33,9 +33,10 @@ async function writeScript(metaWin, text, bad = []) {
 ทำ 8–10 ช็อต แต่ละช็อตเลือก scene จาก: ${Object.entries(SCENES).map(([k, v]) => `${k}=${v}`).join(' | ')}
 ช่อง: head=หัวข้อบนจอสั้นๆ (ใช้ <b>คำ</b> ไฮไลต์เหลือง, <br> ขึ้นบรรทัด) · sub=ซับล่างสั้นๆ · tag=วันที่ (ถ้ามี) · chips=รายการสั้น 2–4 อัน (ถ้ามี) · card=[ป้าย, ตัวเลข, หน่วย] (ถ้าเป็นช็อตตัวเลข)
 vo=คำพูดพากย์ ≤ 110 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล แต่เล่าแบบผู้หญิงเม้าท์ข่าวกับเพื่อนสาว (แก / อะ / เลยนะ / จริงดิ) ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมตรงจุดสำคัญ ช็อตละ 1–2 แท็ก เลือกจาก [excited] [whispers] [surprised] [laughs] [serious] [sighs] เขียนติดกันแบบภาษาพูดปกติ เว้นวรรคเฉพาะระหว่างวลี ห้ามเว้นวรรคทุกคำ (เน้นได้แค่ตัวเลขสำคัญ 1 จุด เช่น "ไม่เกิน ห้า เซนติเมตร") ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
-img=ภาษาอังกฤษ บรรยายภาพฉากการ์ตูนอนิเมะของช็อตนี้ (สถานที่ คน การกระทำ อารมณ์) ตัวละครเป็นคนทั่วไปไม่เหมือนคนจริง ห้ามมีตัวหนังสือในภาพ · sfx เลือกจาก impact_big/whoosh_cine/whoosh_fast/popclick/bass_hit/hit_drum หรือ null · ช็อตแรกเปิดด้วยประโยคที่ทำให้อยากดูต่อ ช็อตสุดท้าย scene=cta ถามคนดูให้คอมเมนต์
+img=ภาษาอังกฤษ บรรยายภาพถ่ายของช็อตนี้ (สถานที่ คน การกระทำ อารมณ์ มุมกล้อง) คนในภาพเป็นคนไทยทั่วไปไม่เหมือนคนจริง ห้ามมีตัวหนังสือในภาพ
+person (ระดับบนสุด)=ชื่อคนดังที่เป็นตัวหลักของข่าว เฉพาะคนที่คนทั้งประเทศรู้จัก (ดารา นักร้อง อินฟลูดัง นักการเมือง นักกีฬา) เขียนแบบที่ค้นรูปเจอ เช่น "ชื่อเล่น ชื่อจริง นามสกุล" · ข่าวคนธรรมดา/ผู้ต้องหาทั่วไป/ไม่แน่ใจว่าดัง ใส่ "" · sfx เลือกจาก impact_big/whoosh_cine/whoosh_fast/popclick/bass_hit/hit_drum หรือ null · ช็อตแรกเปิดด้วยประโยคที่ทำให้อยากดูต่อ ช็อตสุดท้าย scene=cta ถามคนดูให้คอมเมนต์
 ตอบเป็น JSON อย่างเดียว คั่นด้วย GENIX_START ... GENIX_END:
-GENIX_START{"title":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_el":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
+GENIX_START{"title":"","person":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_el":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
 
 เนื้อข่าว:
 ${text}`, { want: 'json', timeoutMs: 240000 });
@@ -171,8 +172,25 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy }) {
     const ls = new LipSync(log);
     try {
       // วิดีโอนิ่งของหน้า (MuseTalk แคชตามไฟล์+เวลาแก้ไข → ทำใหม่เฉพาะตอนเปลี่ยนหน้า)
-      const av = path.join(path.dirname(face), `anchor_${Math.floor(fs.statSync(face).mtimeMs)}.mp4`);
-      if (!fs.existsSync(av)) await sh('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', face, '-t', '4', '-r', '25', '-vf', sq, '-pix_fmt', 'yuv420p', av], {}, log);
+      const m = Math.floor(fs.statSync(face).mtimeMs);
+      let av = path.join(path.dirname(face), `anchor_live_${m}.mp4`);
+      // ท่าขยับ (หัว/ไหล่/กระพริบตา) จาก Wan I2V ทำครั้งเดียวต่อหน้า แล้ว MuseTalk ขยับปากทับ (kidza 10 พ.ย.: รูปนิ่งแข็งเป็นหิน)
+      if (!fs.existsSync(av)) {
+        try {
+          log('🧍 ทำท่าขยับให้ผู้ประกาศ (ครั้งเดียวต่อหน้า ~2–4 นาที)');
+          const raw = av.replace(/\.mp4$/, '_raw.mp4');
+          await comfy.generate({ kind: 'video', image: face, seconds: 5, aspect: '1:1', out: raw, log,
+            motion: 'A news anchor sitting still at the desk looking at the camera, natural idle movement: gentle slight head tilts and small nods, natural eye blinks, subtle breathing and shoulder movement, lips closed, calm friendly expression, static camera, same framing' });
+          await comfy.free();
+          // เล่นไป-กลับ ให้วนลูปไม่กระตุก
+          await sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-filter_complex', `[0:v]fps=25,${sq},split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]`, '-map', '[v]', '-pix_fmt', 'yuv420p', av], {}, log);
+          fs.rmSync(raw, { force: true });
+        } catch (e) { fs.rmSync(av, { force: true }); log('⚠️ ทำท่าขยับไม่ได้ ใช้หน้านิ่งไปก่อน: ' + e.message.slice(0, 150)); }
+      }
+      if (!fs.existsSync(av)) {
+        av = path.join(path.dirname(face), `anchor_${m}.mp4`);
+        if (!fs.existsSync(av)) await sh('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', face, '-t', '4', '-r', '25', '-vf', sq, '-pix_fmt', 'yuv420p', av], {}, log);
+      }
       await ls.start(av);
       log('👄 ผู้ประกาศพูดตามเสียงพากย์');
       talk = path.join(dir, 'tmp', 'anchor_talk.mp4');
@@ -190,19 +208,104 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy }) {
   return out;
 }
 
+const probe = (f) => new Promise((res) => {
+  const p = spawn('ffprobe', ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', f], { windowsHide: true });
+  let o = ''; p.stdout.on('data', (d) => (o += d)); p.on('close', () => { const [w, h] = o.trim().split(',').map(Number); res({ w, h }); });
+});
+
+// ข่าวคนดัง: ค้นรูปตามชื่อใน Bing (ผ่าน Chrome ของแอป) → Gemini คัดเฉพาะรูปของคนที่ซ้ำกันมากสุด ไม่มีตัวหนังสือ/โลโก้
+// ต้องมีคีย์ Gemini (ไม่มีตัวคัด = ไม่เสี่ยงเอารูปคนผิดมาใช้) · ได้ไม่ถึง 3 รูป = คืน [] ไปใช้รูป AI
+async function celebPhotos(dir, name, flow, log) {
+  if (!flow || !hasGeminiKey()) return [];
+  log(`🔎 ค้นรูป ${name}`);
+  await flow.connect();
+  const page = await flow.browser.contexts()[0].newPage();
+  let urls = [];
+  try {
+    await page.goto(`https://www.bing.com/images/search?q=${encodeURIComponent(name)}&qft=+filterui:imagesize-large&form=IRFLTR`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3500);
+    urls = await page.evaluate(() => [...document.querySelectorAll('a.iusc')].map((a) => { try { return JSON.parse(a.getAttribute('m')).murl; } catch { return null; } }).filter(Boolean));
+  } finally { await page.close().catch(() => {}); }
+  const cd = path.join(dir, 'celeb'), cand = [];
+  fs.mkdirSync(cd, { recursive: true });
+  for (const [i, u] of urls.slice(0, 24).entries()) {
+    if (cand.length >= 12) break;
+    try {
+      const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36' }, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) continue;
+      const raw = path.join(cd, `r${i}`);
+      fs.writeFileSync(raw, Buffer.from(await r.arrayBuffer()));
+      const { w, h } = await probe(raw);
+      if (!(Math.min(w, h) >= 500) || w / h > 1.9) continue;
+      const jpg = path.join(cd, `c${cand.length}.jpg`);
+      await sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-vf', "scale='min(1600,iw)':-2", '-frames:v', '1', '-q:v', '3', jpg], {}, log);
+      cand.push(jpg);
+    } catch {}
+  }
+  if (cand.length < 3) return log(`   เจอรูปใช้ได้แค่ ${cand.length} รูป`), [];
+  log(`🧐 ให้ AI คัดรูป ${cand.length} รูป`);
+  const r = await gemini(`รูปที่แนบ ${cand.length} รูป (เลข 0 ถึง ${cand.length - 1} ตามลำดับ) ได้มาจากการค้นชื่อ "${name}"
+1) หาคนที่ปรากฏซ้ำมากที่สุด (คนหลักของการค้น) ถ้าไม่มีหน้าคนเดียวกันซ้ำอย่างน้อย 3 รูป ตอบ {"keep":[]}
+2) keep = เลขรูปที่เป็นคนหลักคนนั้นแน่ ๆ และเป็นรูปถ่ายจริงชัด เห็นหน้าชัด ไม่มีตัวหนังสือ/โลโก้/ลายน้ำ/กรอบ/พาดหัวข่าว ไม่ใช่ภาพตัดต่อหลายช่อง ไม่มีคนอื่นเด่นกว่า ไม่โป๊/ไม่ล่อแหลม เรียงจากรูปชัดสวยที่สุด
+ตอบ JSON {"keep":[เลข]}`, cand, 120000).catch((e) => (log('⚠️ AI คัดรูปไม่ได้: ' + e.message.slice(0, 120)), null));
+  const keep = [...new Set((r?.keep || []).map(Number))].filter((i) => cand[i]).map((i) => cand[i]);
+  return keep.length >= 3 ? keep : (log(`   รูปผ่านแค่ ${keep.length} รูป ไม่พอ`), []);
+}
+
+// ข่าวคนธรรมดา: ภาพสมจริงจาก Z-Image ตามคำบรรยายช็อต (img) · คนในภาพเป็นคนทั่วไป ไม่เหมือนคนจริง
+const REAL = 'realistic photograph, photojournalism, natural light, DSLR, shallow depth of field, vertical frame. Ordinary Thai people, faces not resembling any real person. No text, no letters, no watermark, no logo. ';
+async function realPhotos(dir, spec, log) {
+  if (!fs.existsSync(path.join(AI, 'ComfyUI_windows_portable'))) return [];
+  log('📷 ทำภาพสมจริงด้วย AI (ComfyUI ในเครื่อง)');
+  const out = [];
+  for (const [k, s] of spec.shots.entries()) {
+    const f = path.join(dir, 'tmp', `real_${k}.png`);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    try { await comfy.generate({ kind: 'image', prompt: REAL + (s.img || s.head || ''), aspect: '9:16', out: f, log }); out[k] = f; log(`   ok ภาพ ${k + 1}/${spec.shots.length}`); }
+    catch (e) { log(`   ⚠️ ภาพ ${k + 1}: ${e.message.slice(0, 80)}`); }
+  }
+  await comfy.free();
+  return out;
+}
+// รูปไหนก็ได้ → พื้น 1080x1920 · รูปแนวตั้งครอบเต็มจอ · รูปแนวนอนวางกลางสูง 1150 บนพื้นรูปเดียวกันเบลอ
+async function photoFrame(src, out, log) {
+  const { w, h } = await probe(src);
+  const fc = h / w >= 1.1 // แนวตั้งนิด ๆ (3:4, 4:5) ก็ครอบเต็มจอ ตัดข้างนิดเดียว เหมือนคลิปต้นแบบ
+    ? "[0]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920:(iw-ow)/2:(ih-oh)/3"
+    : "[0]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:2,eq=brightness=-0.18[bg];[b]scale=-2:1150,crop='min(iw,1080)':1150[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2";
+  await sh('ffmpeg', ['-v', 'error', '-y', '-i', src, '-filter_complex', fc, '-frames:v', '1', out], {}, log);
+}
+
 // spec ที่ตรวจแล้ว → โปรเจกต์ใหม่ใน root, คืน dir
-async function make(root, spec, voice, { log, gpuBusy }) {
+async function make(root, spec, voice, { log, gpuBusy, flow }) {
   for (const s of spec.shots) if (!SCENES[s.scene]) throw new Error(`ไม่มีฉาก "${s.scene}" (มี: ${Object.keys(SCENES).join(', ')})`);
   const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
   const dir = path.join(root, `${stamp}-news`);
   fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
   spec = { voice: 'th-TH-NiwatNeural', rate: '+8%', f5_speed: 1.1, ...spec };
+  // แบบหลัก (kidza 10 พ.ย. ตามคลิปเพจเล่าข่าวคดีดัง): รูปเต็มจอ ซูมช้า เฟดดำ เสียงเล่าล้วน ไม่มีตัวหนังสือ/ผู้ประกาศ
+  // ข่าวคนดัง = รูปจริงค้นตามชื่อ · คนธรรมดา = ภาพ AI สมจริง (ไม่ค้นหน้าคนธรรมดา กันได้หน้าคนผิด) · ไม่มี ComfyUI = แบบเดิม อนิเมะ/เวกเตอร์+ผู้ประกาศ
+  // ไม่เคยดึงรูปจากโพสต์ข่าว: ส่วนใหญ่เป็นการ์ดมีพาดหัว และเคยหลุดรูปคนที่ไม่เกี่ยวข้องมา (10 พ.ย.)
+  fs.mkdirSync(path.join(dir, 'shots'), { recursive: true });
+  let pick = null;
+  const celeb = spec.person ? await celebPhotos(dir, spec.person, flow, log).catch((e) => (log('⚠️ ค้นรูปไม่ได้: ' + e.message.slice(0, 120)), [])) : [];
+  if (celeb.length) { log(`🖼️ ใช้รูปจริงของ ${spec.person} ${celeb.length} รูป`); pick = (k) => celeb[k % celeb.length]; }
+  else {
+    const real = await realPhotos(dir, spec, log).catch(() => []);
+    if (real.some(Boolean)) pick = (k) => real[k] || real.find(Boolean);
+  }
+  if (pick) {
+    spec.style = 'photo';
+    for (const k of spec.shots.keys()) await photoFrame(pick(k), path.join(dir, 'shots', `bg_${k}.png`), log);
+  }
   fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 1));
   fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify({ title: spec.title || 'สรุปข่าว', mode: 'news', created: Date.now(), voice }, null, 2));
 
-  log('🎨 วาดฉาก');
-  await sh('node', [path.join(DIR, 'render.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log);
-  await animeScenes(dir, spec, log).catch((e) => log('⚠️ ฉากอนิเมะไม่ได้ ใช้แบบเวกเตอร์: ' + e.message));
+  if (!pick) {
+    log('🎨 วาดฉาก');
+    await sh('node', [path.join(DIR, 'render.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log);
+    await animeScenes(dir, spec, log).catch((e) => log('⚠️ ฉากอนิเมะไม่ได้ ใช้แบบเวกเตอร์: ' + e.message));
+  }
   let sub = '';
   if (voice.startsWith('eleven:')) {
     log('🎙️ พากย์ด้วย ElevenLabs (Mali เม้าท์)');
@@ -229,7 +332,7 @@ async function make(root, spec, voice, { log, gpuBusy }) {
   log('🎬 ประกอบคลิป');
   await sh('python', [path.join(DIR, 'build.py'), dir, ...(sub ? [sub] : [])], {}, log);
   const built = path.join(dir, sub ? `out_${sub}.mp4` : 'out.mp4');
-  if (spec.anchor && fs.existsSync(spec.anchor)) {
+  if (spec.anchor && fs.existsSync(spec.anchor)) { // ผู้ประกาศมุมขวาล่างทุกแบบ (kidza 10 พ.ย. ขอคืนหลังเปลี่ยนเป็นแบบรูปเต็มจอ)
     try { await addAnchor(dir, spec.anchor, built, path.join(dir, 'output', 'ข่าว.mp4'), { log, gpuBusy }); }
     catch (e) { log('⚠️ ใส่ผู้ประกาศไม่ได้: ' + e.message.slice(0, 200)); fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4')); }
   } else fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4'));

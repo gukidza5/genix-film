@@ -61,6 +61,7 @@ class NewsAuto {
     const s = Math.min(c.end, c.start + Math.floor((h - c.start) / c.everyH) * c.everyH);
     return `${d.toLocaleDateString('sv')}-${s}`;
   }
+  due(c = this.cfg()) { const s = this.slotNow(c); return !!(c.on && c.sites.length && s && s !== c.lastSlot); }
   start() { this.timer = setInterval(() => this.tick().catch((e) => this.log('❌ ข่าวอัตโนมัติ: ' + e.message)), 60000); }
   async tick() {
     const c = this.cfg();
@@ -152,7 +153,7 @@ class NewsAuto {
         if (anchor) spec.anchor = anchor;
         // มีคีย์ ElevenLabs = ข่าวอัตโนมัติใช้ Mali เสมอ (kidza ซื้อแล้ว 10 พ.ย. — ช่องเสียงในหน้าข่าวเคยเพี้ยนเป็น F5 แล้วพากย์ผิด)
         const voice = this.news.voices().find((v) => v.id.startsWith('eleven:'))?.id || c.voice || 'edge';
-        const dir = await this.news.make(this.root, spec, voice, { log: this.log, gpuBusy: () => false });
+        const dir = await this.news.make(this.root, spec, voice, { log: this.log, gpuBusy: () => false, flow: this.flow });
         const clip = this.listClips(this.root).find((x) => x.dir === dir);
         let posted = null;
         if (clip && c.platforms.length) { log('โพสต์'); posted = await this.poster.post(clip, c.platforms); }

@@ -45,8 +45,8 @@ function framePrompt(s, spk, chars, locs = []) {
 }
 
 class Pipeline {
-  constructor({ metaWin, renderPng, emit, flow }) {
-    Object.assign(this, { metaWin, renderPng, emit, flow });
+  constructor({ metaWin, renderPng, emit, flow, gate }) {
+    Object.assign(this, { metaWin, renderPng, emit, flow, gate });
     this.stopped = false;
   }
 
@@ -233,6 +233,9 @@ class Pipeline {
     for (let ep = 1; ep <= p.eps; ep++) {
       const E = (p.episodes[ep - 1] ||= { ep });
       if (E.final && fs.existsSync(E.final)) continue;
+      // ข่าวอัตโนมัติถึงรอบ → พักหนังตรงรอยต่อ EP ให้ข่าวใช้การ์ดจอก่อน (10 พ.ย. หนัง 10 ตอนบังข่าวทั้งวัน)
+      if (this.gate) await this.gate();
+      this.check();
 
       // 4 บท
       if (!E.scenes) {
@@ -253,6 +256,7 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
 
       // 5 เฟรม
       for (const [i, s] of E.scenes.entries()) {
+        if (this.gate) await this.gate(); // ข่าวถึงรอบ = พักระหว่างฉาก ไม่ต้องรอจบ EP (EP ละ ~20 นาที)
         this.step(ep, 4, `ฉาก ${i + 1}/${E.scenes.length}`);
         // แนบรูปนักแสดงที่พูดในฉากไปด้วย หน้าจะได้ตรงกันทุกฉาก (Meta แนบไม่ติดก็ไม่เป็นไร)
         // ช็อตรีแอ็กชันไม่มีคนพูด → ใช้รูปคนที่โชว์หน้า (listener) เป็นแบบแทน
@@ -267,6 +271,7 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
       await this.voiceAll(ep, E);
       for (const [i, s] of E.scenes.entries()) {
         if (s.video !== undefined) continue;
+        if (this.gate) await this.gate();
         this.step(ep, 5, `ฉาก ${i + 1}/${E.scenes.length}`);
         s.video = this.p.engine === 'comfy' ? await this.comfyVideo(ep, i, s) : await this.media(`Create a video: ${s.image_prompt}. ${s.motion}. Cinematic, vertical 9:16`, 'video', this.f(`ep${ep}`, `s${i + 1}.mp4`), 300000, s.frame ? [s.frame] : []);
         this.save();

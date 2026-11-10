@@ -28,11 +28,18 @@ for k, s in enumerate(spec['shots']):
     d = dur(mp3) + 0.45  # หายใจท้ายช็อต
     n = int(d * 30)
     seg = os.path.join(tmp, f'seg{k}.mp4')
-    # ฉากซูมเข้าช้าๆ, ตัวหนังสือเฟดเข้า+เลื่อนขึ้นนิดๆ
-    fc = (f"[0]scale=1188:2112,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
-          f"[1]format=rgba,fade=in:st=0.1:d=0.35:alpha=1[fg];[bg][fg]overlay=x=0:y='max(0,30-90*t)'")
-    run(['ffmpeg', '-v', 'error', '-y', '-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png'), '-loop', '1', '-i', os.path.join(job, 'shots', f'fg_{k}.png'),
-         '-filter_complex', fc, '-t', f'{d:.3f}', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', seg])
+    if spec.get('style') == 'photo':
+        # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต + เฟดดำหัวท้าย ไม่มีตัวหนังสือ
+        z = f"1+0.08*on/{n}" if k % 2 == 0 else f"1.08-0.08*on/{n}"
+        fc = (f"[0]scale=1188:2112,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30,"
+              f"fade=in:st=0:d=0.3,fade=out:st={d - 0.3:.3f}:d=0.3")
+        ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png')]
+    else:
+        # ฉากซูมเข้าช้าๆ, ตัวหนังสือเฟดเข้า+เลื่อนขึ้นนิดๆ
+        fc = (f"[0]scale=1188:2112,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
+              f"[1]format=rgba,fade=in:st=0.1:d=0.35:alpha=1[fg];[bg][fg]overlay=x=0:y='max(0,30-90*t)'")
+        ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png'), '-loop', '1', '-i', os.path.join(job, 'shots', f'fg_{k}.png')]
+    run(['ffmpeg', '-v', 'error', '-y', *ins_, '-filter_complex', fc, '-t', f'{d:.3f}', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', seg])
     segs.append(seg); starts.append(t); t += d
 
 # เสียงพากย์ล้วนตามเวลาจริง (16k mono) ให้ผู้ประกาศปากขยับตาม (news.js เอาไปเข้า MuseTalk)

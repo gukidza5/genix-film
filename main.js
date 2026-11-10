@@ -127,7 +127,7 @@ function runJob({ opts, dir }, auto = false) {
     // โพสต์อัตโนมัติ: งานที่เลือก "ทำเสร็จแล้ว" เอง (คลิปขายของ) ชนะค่าในหน้าโพสต์ · no = เก็บไว้โพสต์เองทีหลัง
     if (ch === 'done' && opts.autopost !== 'no') poster.postProject(ROOT, dir, opts.autopost === 'yes').catch((e) => send('postlog', '❌ ' + e.message));
   };
-  job = new (opts.mode === 'shopee' ? ShopeePipeline : Pipeline)({ metaWin, renderPng, emit, flow });
+  job = new (opts.mode === 'shopee' ? ShopeePipeline : Pipeline)({ metaWin, renderPng, emit, flow, gate: newsGate });
   current = { opts, dir }; saveQueue();
   const resumed = fs.existsSync(path.join(dir, 'project.json'));
   // สถานะงานตอนนี้ ให้ทุกหน้าถามได้ (เปิดหน้าใหม่/รีแอปแล้วยังรู้ว่าทำเรื่องอะไร ถึงไหน ใครสั่ง)
@@ -205,7 +205,7 @@ ipcMain.handle('news:state', () => ({ busy: newsBusy, last: newsLast }));
 ipcMain.handle('news:make', async (_e, { spec, voice }) => {
   if (newsBusy) return { error: 'กำลังทำคลิปข่าวอีกอันอยู่' };
   newsBusy = true;
-  try { newsLast = { dir: await news.make(ROOT, spec, voice, { log: (m) => send('newslog', m), gpuBusy: () => !!job }) }; }
+  try { newsLast = { dir: await news.make(ROOT, spec, voice, { log: (m) => send('newslog', m), gpuBusy: () => !!job, flow }) }; }
   catch (e) { send('newslog', '❌ ' + e.message); newsLast = { error: e.message }; }
   finally { newsBusy = false; send('newsdone', newsLast); }
   return newsLast;
@@ -215,10 +215,35 @@ const { NewsAuto } = require('./newsauto');
 const newsAuto = new NewsAuto({
   userData: app.getPath('userData'), root: ROOT, news, ask: require('./meta').ask, metaWin: () => metaWin, poster, listClips, flow,
   log: (m) => { send('newslog', m); fs.appendFileSync(path.join(app.getPath('userData'), 'newsauto.log'), `[${new Date().toLocaleString('th-TH')}] ${m}\n`); },
-  busy: () => newsBusy || !!job, setBusy: (b) => { newsBusy = b; if (!b) send('newsdone', newsLast); },
+  busy: () => newsBusy || (!!job && !jobPaused), setBusy: (b) => { newsBusy = b; if (!b) send('newsdone', newsLast); },
   defaultFace: () => { const f = path.join(ROOT, 'presenter', 'face.png'); return fs.existsSync(f) ? f : ''; },
 });
 newsAuto.start();
+// หนังเรียกตรงรอยต่อ EP: ถ้าข่าวถึงรอบ พักหนังจนข่าวรอบนั้นจบ (tick จะเห็น busy=false แล้วเริ่มข่าว)
+let jobPaused = false;
+async function newsGate() {
+  if (!newsAuto.due()) return;
+  jobPaused = true; send('log', '⏸️ พักหนังไว้ก่อน ให้ข่าวอัตโนมัติรอบนี้ทำก่อน เสร็จแล้วทำต่อเอง');
+  try { while ((newsAuto.due() || newsBusy) && !job?.stopped) await new Promise((r) => setTimeout(r, 20000)); }
+  finally { jobPaused = false; }
+  send('log', '▶️ ข่าวเสร็จแล้ว ทำหนังต่อ');
+}
+// แก้โค้ดแล้วแอปรีสตาร์ทตัวเอง (เฉพาะเครื่องที่มี .git = เครื่อง kidza) · Claude สั่งเปิดแอปเองไม่ได้ เพราะแอปที่ Claude เปิดมองไม่เห็น AppData จริง
+// รอข่าวรอบที่ทำอยู่จบก่อน · หนังทำต่อเองจากฉากล่าสุดที่เซฟไว้
+if (fs.existsSync(path.join(__dirname, '.git'))) {
+  let t = null;
+  const kick = (_ev, f) => {
+    if (!f || !/\.(js|html|css)$/.test(f)) return;
+    clearTimeout(t);
+    t = setTimeout(function again() {
+      if (newsBusy) { t = setTimeout(again, 30000); return; }
+      send('log', `🔄 โค้ดเปลี่ยน (${f}) รีสตาร์ทแอปเอง งานค้างจะทำต่ออัตโนมัติ`);
+      app.quitting = true; app.relaunch(); app.exit(0);
+    }, 8000);
+  };
+  fs.watch(__dirname, kick);
+  fs.watch(path.join(__dirname, 'ui'), kick);
+}
 // เช็คตอนเปิดแอป: อ่านคีย์/ตั้งค่าเจอไหม (10 พ.ย. แอปจริงมองไม่เห็นคีย์ ElevenLabs ทั้งที่ไฟล์อยู่)
 app.whenReady().then(() => {
   const el = require('./eleven'), n = require('./notify');
