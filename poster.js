@@ -31,7 +31,7 @@ function listClips(root) {
       const ep = (f.match(/\d+/) || [''])[0];
       out.push({
         dir, file, name: f, title: p.title || p.product?.title || d, mode: p.mode || 'film', created: p.created,
-        caption: fs.existsSync(txt) ? fs.readFileSync(txt, 'utf8').trim() : `${p.title || ''} EP.${ep} 🎬\n#หนังสั้น #ซีรีส์ #${(p.genre || 'ละคร').replace(/\s/g, '')}${p.tts === 'f5' ? '\nเสียงพากย์: F5-TTS-THAI (CC BY 4.0), เสียงต้นแบบ THAI SER โดย VISTEC (CC BY-SA 4.0)' : ''}`,
+        caption: fs.existsSync(txt) ? fs.readFileSync(txt, 'utf8').trim() : `${p.title || ''} EP.${ep} 🎬\n#หนังสั้น #ซีรีส์ #${(p.genre || 'ละคร').replace(/\s/g, '')}`, // kidza 10 พ.ย.: ไม่เอาบรรทัดเครดิตเสียงในแคปชัน
         product: p.product?.title || '', link: p.product?.url || '', shop: p.shop || (p.mode === 'shopee' ? 'shopee' : ''),
         posted: posted[f] || {},
       });
