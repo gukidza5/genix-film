@@ -150,7 +150,8 @@ class NewsAuto {
         if (bad.length) { log('  เลขแต่งไม่หาย ข้ามข่าวนี้'); continue; }
         const anchor = c.anchor && fs.existsSync(c.anchor) ? c.anchor : this.defaultFace();
         if (anchor) spec.anchor = anchor;
-        const voice = c.voice || (this.news.voices()[0] || {}).id || 'edge';
+        // มีคีย์ ElevenLabs = ข่าวอัตโนมัติใช้ Mali เสมอ (kidza ซื้อแล้ว 10 พ.ย. — ช่องเสียงในหน้าข่าวเคยเพี้ยนเป็น F5 แล้วพากย์ผิด)
+        const voice = this.news.voices().find((v) => v.id.startsWith('eleven:'))?.id || c.voice || 'edge';
         const dir = await this.news.make(this.root, spec, voice, { log: this.log, gpuBusy: () => false });
         const clip = this.listClips(this.root).find((x) => x.dir === dir);
         let posted = null;
