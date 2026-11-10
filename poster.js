@@ -153,8 +153,10 @@ async function typeInto(page, loc, text) {
   throw new Error('พิมพ์แคปชันไม่เข้า (ช่องไม่รับตัวหนังสือ)');
 }
 
+// ดูแค่โดเมน+path ไม่ดู ?query (10 พ.ย. เฟสแปะคำ login ใน query ของลิงก์ปกติ บอทเลยคิดว่ายังไม่ล็อกอิน ทั้งที่ล็อกอินอยู่)
 function needLogin(page, re) {
-  if (re.test(page.url())) throw new Error('ยังไม่ได้ล็อกอิน — กด "เปิดหน้าล็อกอิน" แล้วล็อกอินใน Chrome ก่อน');
+  const u = new URL(page.url());
+  if (re.test(u.hostname + u.pathname)) throw new Error(`ยังไม่ได้ล็อกอิน (${u.hostname + u.pathname}) — กด "เปิดหน้าล็อกอิน" แล้วล็อกอินใน Chrome ก่อน`);
 }
 
 // เลือกสินค้าตัวแรกจากผลค้นหาในป๊อปอัป (ใช้ทั้ง TikTok และ Shopee)
