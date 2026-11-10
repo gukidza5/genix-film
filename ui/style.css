@@ -54,3 +54,9 @@ pre#log { margin:0; max-height:180px; overflow:auto; white-space:pre-wrap; color
 .gallery figcaption { font-size:12px; color:var(--mut); margin-top:4px; }
 #projects .p { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
 #projects .p span { flex:1; } #projects small { color:var(--mut); }
+/* การ์ดปลายทางโพสต์หนังสั้น: ติ๊ก | ลิงก์ เต็มแถว */
+#dest { grid-template-columns:130px 1fr; align-items:center; }
+#dest > label:first-child { grid-column:1/-1; }
+#dest .chk { grid-column:auto; }
+#dest .wide { flex-direction:row; align-items:center; gap:10px; }
+#dest .wide input { flex:1; }
