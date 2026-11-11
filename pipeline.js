@@ -66,7 +66,12 @@ class Pipeline {
   async media(prompt, want, out, timeoutMs, files) {
     if (fs.existsSync(out)) return out;
     if (this.p.engine === 'flow' && !this.flowOff) return this.flowMedia(prompt, want, out, files);
-    if (this.p.engine === 'comfy' && want === 'image') return this.comfyRun({ kind: 'image', prompt: prompt.replace(/^Imagine,?\s*/i, ''), out });
+    if (this.p.engine === 'comfy' && want === 'image') {
+      // มีรูปตัวละคร + โมเดลแก้รูป → วางคนเดิมลงฉากใหม่ หน้าไม่เปลี่ยนทุกฉาก (Qwen-Image-Edit, comfy.js)
+      const refs = (files || []).filter(Boolean), clean = prompt.replace(/^Imagine,?\s*/i, '');
+      const pre = refs.length && comfy.editReady() ? `Create a new photo with the same ${refs.length > 1 ? 'people as in the reference pictures (picture 1, 2, 3 are different people)' : 'person as in the reference picture'}: keep exactly the same face, age, hairstyle and clothes. New scene: ` : '';
+      return this.comfyRun({ kind: 'image', prompt: pre + clean, refs, out });
+    }
     for (let i = 0; i < 2; i++) {
       try {
         const urls = await this.ask(prompt, want, timeoutMs, files);
@@ -260,9 +265,12 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
         this.step(ep, 4, `ฉาก ${i + 1}/${E.scenes.length}`);
         // แนบรูปนักแสดงที่พูดในฉากไปด้วย หน้าจะได้ตรงกันทุกฉาก (Meta แนบไม่ติดก็ไม่เป็นไร)
         // ช็อตรีแอ็กชันไม่มีคนพูด → ใช้รูปคนที่โชว์หน้า (listener) เป็นแบบแทน
-        const spk = p.cast.characters.find((c) => c.name === s.speaker), ref = (spk || p.cast.characters.find((c) => c.name === s.listener))?.img;
+        const spk = p.cast.characters.find((c) => c.name === s.speaker), lst = p.cast.characters.find((c) => c.name === s.listener);
+        // ฉากพูด = รูปคนพูดคนเดียว · ฉากรวม = ทุกคนที่อยู่ในภาพ (สูงสุด 3) · รีแอ็กชัน = คนที่โชว์หน้า
+        const inShot = p.cast.characters.filter((c) => s.image_prompt.includes(c.look.slice(0, 30)) || (s.action || '').includes(c.name));
+        const refs = (s.line && spk ? [spk] : inShot.length ? inShot : [spk || lst]).map((c) => c?.img).filter(Boolean).slice(0, 3);
         // ฉากมีบทพูด: ให้คนพูดเด่นหน้ากล้อง ไม่งั้นตอนทำปากขยับ (S2V) จะไปขยับปากอีกคนในภาพ
-        s.frame = await this.media(`Imagine ${framePrompt(s, spk, p.cast.characters, p.cast.locations)}, cinematic film still, dramatic lighting, vertical 9:16`, 'image', this.f(`ep${ep}`, `s${i + 1}.jpg`), 240000, ref ? [ref] : []);
+        s.frame = await this.media(`Imagine ${framePrompt(s, spk, p.cast.characters, p.cast.locations)}, cinematic film still, dramatic lighting, vertical 9:16`, 'image', this.f(`ep${ep}`, `s${i + 1}.jpg`), 240000, refs);
         this.save();
         if (s.frame) this.emit('asset', { kind: 'frame', file: s.frame, name: `EP${ep} ฉาก ${i + 1}` });
       }

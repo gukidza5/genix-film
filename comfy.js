@@ -28,6 +28,34 @@ const imageGraph = (prompt, w, h, prefix) => ({
   10: { class_type: 'SaveImage', inputs: { images: ['9', 0], filename_prefix: prefix } },
 });
 
+// รูปจากรูปตัวละคร (Qwen-Image-Edit 2511 + Lightning 4 สเต็ป) หน้าเดิมทุกฉาก — refs = ชื่อไฟล์ใน input ได้ 1–3 รูป (kidza 11 พ.ย. อยากได้แบบละครข้าวกล่อง 10 บาท)
+const EDIT_MODEL = 'qwen_image_edit_2511_lightning4.safetensors';
+const editReady = () => ['diffusion_models/' + EDIT_MODEL, 'text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors', 'vae/qwen_image_vae.safetensors']
+  .every((f) => { try { return fs.statSync(path.join(COMFY, 'models', f)).size > 1e8; } catch { return false; } });
+const editGraph = (refs, prompt, w, h, prefix) => {
+  const g = {
+    1: { class_type: 'UNETLoader', inputs: { unet_name: EDIT_MODEL, weight_dtype: 'default' } },
+    2: { class_type: 'CLIPLoader', inputs: { clip_name: 'qwen_2.5_vl_7b_fp8_scaled.safetensors', type: 'qwen_image', device: 'default' } },
+    3: { class_type: 'VAELoader', inputs: { vae_name: 'qwen_image_vae.safetensors' } },
+    4: { class_type: 'ModelSamplingAuraFlow', inputs: { model: ['1', 0], shift: 3 } },
+    7: { class_type: 'EmptySD3LatentImage', inputs: { width: w, height: h, batch_size: 1 } },
+  };
+  const imgs = {};
+  refs.slice(0, 3).forEach((r, i) => {
+    g[20 + i] = { class_type: 'LoadImage', inputs: { image: r } };
+    g[30 + i] = { class_type: 'ImageScaleToTotalPixels', inputs: { image: [String(20 + i), 0], upscale_method: 'lanczos', megapixels: 1, resolution_steps: 1 } };
+    imgs[`image${i + 1}`] = [String(30 + i), 0];
+  });
+  g[5] = { class_type: 'TextEncodeQwenImageEditPlus', inputs: { clip: ['2', 0], vae: ['3', 0], prompt, ...imgs } };
+  g[6] = { class_type: 'TextEncodeQwenImageEditPlus', inputs: { clip: ['2', 0], vae: ['3', 0], prompt: '', ...imgs } };
+  g[10] = { class_type: 'FluxKontextMultiReferenceLatentMethod', inputs: { conditioning: ['5', 0], reference_latents_method: 'index_timestep_zero' } };
+  g[11] = { class_type: 'FluxKontextMultiReferenceLatentMethod', inputs: { conditioning: ['6', 0], reference_latents_method: 'index_timestep_zero' } };
+  g[8] = { class_type: 'KSampler', inputs: { model: ['4', 0], positive: ['10', 0], negative: ['11', 0], latent_image: ['7', 0], seed: seed(), steps: 4, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 1 } };
+  g[9] = { class_type: 'VAEDecode', inputs: { samples: ['8', 0], vae: ['3', 0] } };
+  g[12] = { class_type: 'SaveImage', inputs: { images: ['9', 0], filename_prefix: prefix } };
+  return g;
+};
+
 const videoGraph = (img, motion, w, h, frames, prefix) => {
   const s = seed();
   const ks = (model, latent, a, b, noise) => ({ class_type: 'KSamplerAdvanced', inputs: { model, positive: ['12', 0], negative: ['12', 1], latent_image: latent, add_noise: noise ? 'enable' : 'disable', noise_seed: s, steps: 4, cfg: 1, sampler_name: 'euler', scheduler: 'simple', start_at_step: a, end_at_step: b, return_with_leftover_noise: noise ? 'enable' : 'disable' } });
@@ -118,11 +146,13 @@ function put(file) {
  * generate({ kind: 'image'|'video', prompt, motion, image, wav, seconds, aspect, out, isStopped, log })
  * video + wav = ฉากพูด (S2V ปากขยับ, ยาวตามเสียง) · video ไม่มี wav = ฉากเงียบ (I2V)
  */
-async function generate({ kind, prompt, motion, image, wav, seconds = 4, aspect = '9:16', out, isStopped, log }) {
+async function generate({ kind, prompt, motion, image, refs = [], wav, seconds = 4, aspect = '9:16', out, isStopped, log }) {
   await ensure(log);
   const [vw, vh, iw, ih] = SIZE[aspect] || SIZE['9:16'];
   let res;
-  if (kind === 'image') res = await runGraph(imageGraph(prompt, iw, ih, 'genix/img'), isStopped);
+  refs = refs.filter((f) => f && fs.existsSync(f));
+  if (kind === 'image' && refs.length && editReady()) res = await runGraph(editGraph(refs.map(put), prompt + '. Photorealistic film still. No text, no captions, no user interface, no livestream overlay, no watermark, no logo.', iw, ih, 'genix/edit'), isStopped); // เทสแรกโผล่กรอบไลฟ์สดปลอม
+  else if (kind === 'image') res = await runGraph(imageGraph(prompt, iw, ih, 'genix/img'), isStopped);
   else if (wav) res = await runGraph(talkGraph(put(image), put(wav), motion || 'the person is talking, natural expression', vw, vh, framesFor(seconds), 'genix/talk'), isStopped);
   else res = await runGraph(videoGraph(put(image), motion, vw, vh, framesFor(seconds), 'genix/vid'), isStopped);
   fs.copyFileSync(res, out);
@@ -132,4 +162,4 @@ async function generate({ kind, prompt, motion, image, wav, seconds = 4, aspect 
 // คืน VRAM (โมเดลจะโหลดใหม่เองตอนงานถัดไป) — ใช้ก่อนรันงานการ์ดจออื่น เช่นพากย์ F5
 const free = () => call('/free', { unload_models: true, free_memory: true }).catch(() => {});
 
-module.exports = { generate, alive, ensure, framesFor, free };
+module.exports = { generate, alive, ensure, framesFor, free, editReady };
