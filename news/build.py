@@ -20,26 +20,29 @@ if vodir and not os.path.exists(os.path.join(job, vodir, '.trimmed')):  # F5 ช
 def dur(f):
     return float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]))
 
+X = 0.5  # ช็อตซ้อนกันตอนเปลี่ยนภาพ (ละลายเข้าหากัน แทนเฟดดำแล้วตัด — kidza 11 พ.ย. อยากให้ต่อกันเป็นธรรมชาติ)
+N = len(spec['shots'])
 segs, starts, t = [], [], 0.0
 for k, s in enumerate(spec['shots']):
     mp3 = vo(k)
     if not vodir and not os.path.exists(mp3):
         run([sys.executable, '-m', 'edge_tts', '--voice', spec['voice'], f"--rate={spec.get('rate', '+0%')}", '--text', s['vo'], '--write-media', mp3])
     d = dur(mp3) + 0.45  # หายใจท้ายช็อต
-    n = int(d * 30)
+    dd = d + (X if k < N - 1 else 0)  # ยืดท้ายไว้ซ้อนกับช็อตถัดไป เวลาเริ่มช็อตยังตรงเสียงเดิม
+    n = int(dd * 30)
     seg = os.path.join(tmp, f'seg{k}.mp4')
     if spec.get('style') == 'photo':
-        # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต + เฟดดำหัวท้าย ไม่มีตัวหนังสือ
+        # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต ไม่มีตัวหนังสือ · เฟดดำแค่ต้น/ท้ายคลิป ระหว่างช็อตละลายต่อกัน (ข้างล่าง)
         z = f"1+0.08*on/{n}" if k % 2 == 0 else f"1.08-0.08*on/{n}"
-        fc = (f"[0]scale=1188:2112,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30,"
-              f"fade=in:st=0:d=0.3,fade=out:st={d - 0.3:.3f}:d=0.3")
+        fades = (',fade=in:st=0:d=0.3' if k == 0 else '') + (f',fade=out:st={dd - 0.4:.3f}:d=0.4' if k == N - 1 else '')
+        fc = f"[0]scale=1188:2112,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30{fades}"
         ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png')]
     else:
         # ฉากซูมเข้าช้าๆ, ตัวหนังสือเฟดเข้า+เลื่อนขึ้นนิดๆ
         fc = (f"[0]scale=1188:2112,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
               f"[1]format=rgba,fade=in:st=0.1:d=0.35:alpha=1[fg];[bg][fg]overlay=x=0:y='max(0,30-90*t)'")
         ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png'), '-loop', '1', '-i', os.path.join(job, 'shots', f'fg_{k}.png')]
-    run(['ffmpeg', '-v', 'error', '-y', *ins_, '-filter_complex', fc, '-t', f'{d:.3f}', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', seg])
+    run(['ffmpeg', '-v', 'error', '-y', *ins_, '-filter_complex', fc, '-t', f'{dd:.3f}', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', seg])
     segs.append(seg); starts.append(t); t += d
 
 # เสียงพากย์ล้วนตามเวลาจริง (16k mono) ให้ผู้ประกาศปากขยับตาม (news.js เอาไปเข้า MuseTalk)
@@ -51,10 +54,18 @@ for k in range(len(spec['shots'])):
 run(['ffmpeg', '-v', 'error', '-y', *vi, '-filter_complex', ';'.join(vf) + ';' + ''.join(f'[a{k}]' for k in range(len(vf))) + f"amix=inputs={len(vf)}:normalize=0,apad,atrim=0:{t:.2f}[o]",
      '-map', '[o]', '-ar', '16000', '-ac', '1', os.path.join(tmp, 'vo_track.wav')])
 
-lst = os.path.join(tmp, 'list.txt')
-open(lst, 'w').write(''.join(f"file '{os.path.abspath(p)}'\n" for p in segs))
+# ต่อช็อตแบบละลาย: ช็อต k เริ่มโผล่ตรง starts[k] พอดี (ช็อตก่อนหน้ายืดท้ายไว้ X วิ) ความยาวรวม = t เท่าเดิม
 video = os.path.join(tmp, 'video.mp4')
-run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', video])
+if N == 1:
+    run(['ffmpeg', '-v', 'error', '-y', '-i', segs[0], '-c', 'copy', video])
+else:
+    xf, prev = [], '[0:v]'
+    for k in range(1, N):
+        o = '[v]' if k == N - 1 else f'[x{k}]'
+        xf.append(f"{prev}[{k}:v]xfade=transition=fade:duration={X}:offset={starts[k]:.3f}{o}")
+        prev = o
+    run(['ffmpeg', '-v', 'error', '-y', *[a for p in segs for a in ('-i', p)], '-filter_complex', ';'.join(xf),
+         '-map', '[v]', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', video])
 
 # เสียง: พากย์ตามจุดเริ่มช็อต + sfx ต้นช็อต + เสียงบรรยากาศเบาๆ ทั้งคลิป
 ins, mix = ['-i', video], []
