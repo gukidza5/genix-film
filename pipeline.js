@@ -310,13 +310,13 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
       const fit = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
       const frames = Math.ceil(len * 30);
       const img = s.frame || this.p.cast.characters.find((c) => c.img)?.img;
-      const vin = s.video ? ['-stream_loop', '-1', '-i', s.video]
+      const vin = s.video ? ['-i', s.video]
         : img ? ['-i', img]
         : ['-f', 'lavfi', '-i', `color=c=black:s=${W}x${H}:r=30`];
-      const vf = s.video || !img ? `${fit},fps=30` : `${fit},zoompan=z='min(zoom+0.0007,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30`;
+      const vf = s.video || !img ? `${fit},fps=30,tpad=stop_mode=clone:stop_duration=${len.toFixed(2)}` : `scale=${W * 3}:${H * 3}:force_original_aspect_ratio=increase,crop=${W * 3}:${H * 3},setsar=1,zoompan=z='min(zoom+0.0007,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30`;
       const ain = audio ? ['-i', audio] : ['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo'];
       await run('ffmpeg', ['-y', ...vin, '-i', cap, ...ain,
-        '-filter_complex', `[0:v]${vf}[v];[v][1:v]overlay=0:0[o]`, '-map', '[o]', '-map', '2:a',
+        '-filter_complex', `[0:v]${vf}[v];[v][1:v]overlay=0:0[o];[2:a]afade=t=in:d=0.03,afade=t=out:st=${(len - 0.06).toFixed(2)}:d=0.06[a]`, '-map', '[o]', '-map', '[a]',
         '-t', len.toFixed(2), '-r', '30', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
         '-c:a', 'aac', '-ar', '44100', '-ac', '2', out]);
     }
