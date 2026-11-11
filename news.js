@@ -209,20 +209,28 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], wh
     } catch (e) { log('⚠️ ผู้ประกาศปากขยับไม่ได้ ใช้รูปนิ่งแทน: ' + e.message.slice(0, 150)); }
     finally { ls.stop(); }
   }
-  // กรอบ 3:4 ขอบทอง มุมล่าง (kidza ขอ 9 พ.ย.) ข่าวคู่ = ชายซ้าย หญิงขวา กรอบเล็กลงนิด
-  const W = duo ? 330 : 360, H = W * 4 / 3, R = 8, y = 1920 - H - 2 * R - 60;
-  const ins = [], fc = [];
+  // กรอบ 3:4 มุมล่าง ข่าวคู่ = ชายซ้าย หญิงขวา · มุมมน ขอบขาวบาง มีเงา เลื่อนขึ้นมาตอนต้นคลิป (kidza 11 พ.ย. อยากให้เนียนแบบช่องอื่น ไม่ใช่กล่องแปะ)
+  const W = duo ? 330 : 360, H = W * 4 / 3, B = 5, P = 30, r = 26, y = 1920 - H - 90;
+  const rr = (cx, cy, hw, hh, q) => `lte(hypot(max(0,abs(X-${cx})-${hw - q}),max(0,abs(Y-${cy})-${hh - q})),${q})`;
+  const card = path.join(dir, 'tmp', 'anchor_card.png'), mask = path.join(dir, 'tmp', 'anchor_mask.png'), CW = W + 2 * P, CH = H + 2 * P;
+  await sh('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=black:s=${CW}x${CH}`, '-f', 'lavfi', '-i', `color=black:s=${CW}x${CH}`, '-filter_complex',
+    `[0]format=rgba,geq=r=0:g=0:b=0:a='150*${rr(CW / 2, CH / 2 + 12, W / 2 + B, H / 2 + B, r + B)}',boxblur=luma_radius=14:luma_power=2:alpha_radius=14:alpha_power=2[s];` +
+    `[1]format=rgba,geq=r=255:g=255:b=255:a='255*${rr(CW / 2, CH / 2, W / 2 + B, H / 2 + B, r + B)}'[b];[s][b]overlay=0:0`, '-frames:v', '1', card], {}, log);
+  await sh('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=black:s=${W}x${H}`, '-vf', `format=gray,geq=lum='255*${rr(W / 2, H / 2, W / 2, H / 2, r)}'`, '-frames:v', '1', mask], {}, log);
+  const n = who.length, ins = [], fc = [`[${n + 1}:v]split=${n}${who.map((_, i) => `[c${i}]`).join('')}`, `[${n + 2}:v]format=gray,split=${n}${who.map((_, i) => `[m${i}]`).join('')}`];
   let prev = '[0:v]';
   for (const [i, a] of who.entries()) {
     const talk = talks[i];
     ins.push(...(talk ? ['-i', talk] : ['-loop', '1', '-i', a.face]));
     const crop = talk ? "crop=w='ih*3/4':h=ih" : "crop=w='min(iw,ih*3/4)':h='min(iw,ih*3/4)*4/3':x='(iw-ow)/2':y=0";
-    const x = a.left ? 30 : 1080 - W - 2 * R - 30, o = i === who.length - 1 ? '[v]' : `[o${i}]`;
-    fc.push(`[${i + 1}:v]${crop},scale=${W}:${H},pad=${W + 2 * R}:${H + 2 * R}:${R}:${R}:color=0xffd84a[f${i}]`, `${prev}[f${i}]overlay=${x}:${y}:eof_action=repeat${o}`);
+    const x = a.left ? 34 : 1080 - W - 34, o = i === n - 1 ? '[v]' : `[o${i}]`;
+    const up = (yy) => `'${yy}+700*pow(max(0,1-(t-${0.3 + 0.2 * i})/0.7),3)'`; // ease-out ขึ้นจากขอบล่าง คนละจังหวะกัน
+    fc.push(`[${i + 1}:v]${crop},scale=${W}:${H},format=yuva420p[a${i}]`, `[a${i}][m${i}]alphamerge[f${i}]`,
+      `${prev}[c${i}]overlay=x=${x - P}:y=${up(y - P)}[t${i}]`, `[t${i}][f${i}]overlay=x=${x}:y=${up(y)}:eof_action=repeat${o}`);
     prev = o;
   }
   const len = await duration(src);
-  await sh('ffmpeg', ['-v', 'error', '-y', '-i', src, ...ins, '-filter_complex', fc.join(';'), '-map', '[v]', '-map', '0:a', '-t', len.toFixed(3), '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'copy', out], {}, log);
+  await sh('ffmpeg', ['-v', 'error', '-y', '-i', src, ...ins, '-loop', '1', '-i', card, '-loop', '1', '-i', mask, '-filter_complex', fc.join(';'), '-map', '[v]', '-map', '0:a', '-t', len.toFixed(3), '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'copy', out], {}, log);
   return out;
 }
 
@@ -235,11 +243,13 @@ async function s2vTrack(dir, face, shots, total, sq, log, tag) {
     const f = path.join(dir, 'tmp', `talk_${tag}_${k}.mp4`);
     if (!fs.existsSync(f)) await comfy.generate({ kind: 'video', image: face, wav: s.wav, seconds: s.len, aspect: '1:1', out: f, log,
       motion: 'A TV news anchor talking to the camera, natural lip movement matching the speech, subtle head movement and natural blinking, calm professional friendly expression, static camera, same framing' });
-    parts.push({ f, at: s.at });
+    parts.push({ f, at: s.at, len: await duration(f) });
   }
   const res = path.join(dir, 'tmp', `anchor_${tag}.mp4`);
   const fc = ['[0:v]fps=25,scale=512:512,setpts=PTS-STARTPTS[b0]']; // ท่าเฉยครอปมาแล้ว
-  parts.forEach((p, i) => fc.push(`[${i + 1}:v]fps=25,${sq},setpts=PTS-STARTPTS+${p.at.toFixed(3)}/TB[p${i}]`, `[b${i}][p${i}]overlay=0:0:eof_action=pass[b${i + 1}]`));
+  // ละลายเข้า/ออกจากท่าเฉย 0.25 วิ หัวไม่กระโดดตอนเริ่ม/หยุดพูด
+  parts.forEach((p, i) => fc.push(`[${i + 1}:v]fps=25,${sq},format=yuva420p,fade=t=in:st=0:d=0.25:alpha=1,fade=t=out:st=${Math.max(0, p.len - 0.25).toFixed(3)}:d=0.25:alpha=1,setpts=PTS-STARTPTS+${p.at.toFixed(3)}/TB[p${i}]`,
+    `[b${i}][p${i}]overlay=0:0:eof_action=pass[b${i + 1}]`));
   await sh('ffmpeg', ['-v', 'error', '-y', '-stream_loop', '-1', '-i', idle, ...parts.flatMap((p) => ['-i', p.f]), '-filter_complex', fc.join(';'),
     '-map', `[b${parts.length}]`, '-t', total.toFixed(3), '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '18', res], {}, log);
   return res;

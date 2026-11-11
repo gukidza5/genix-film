@@ -20,6 +20,7 @@ if vodir and not os.path.exists(os.path.join(job, vodir, '.trimmed')):  # F5 ช
 def dur(f):
     return float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]))
 
+# ขยาย 3 เท่าก่อน zoompan: ที่ 1188 พิกัดปัดเป็นพิกเซลเต็ม ภาพซูมกระตุก (วัดแล้ว 11 พ.ย.)
 X = 0.5  # ช็อตซ้อนกันตอนเปลี่ยนภาพ (ละลายเข้าหากัน แทนเฟดดำแล้วตัด — kidza 11 พ.ย. อยากให้ต่อกันเป็นธรรมชาติ)
 N = len(spec['shots'])
 segs, starts, t = [], [], 0.0
@@ -35,11 +36,11 @@ for k, s in enumerate(spec['shots']):
         # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต ไม่มีตัวหนังสือ · เฟดดำแค่ต้น/ท้ายคลิป ระหว่างช็อตละลายต่อกัน (ข้างล่าง)
         z = f"1+0.08*on/{n}" if k % 2 == 0 else f"1.08-0.08*on/{n}"
         fades = (',fade=in:st=0:d=0.3' if k == 0 else '') + (f',fade=out:st={dd - 0.4:.3f}:d=0.4' if k == N - 1 else '')
-        fc = f"[0]scale=1188:2112,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30{fades}"
+        fc = f"[0]scale=3564:6336,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30{fades}"
         ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png')]
     else:
         # ฉากซูมเข้าช้าๆ, ตัวหนังสือเฟดเข้า+เลื่อนขึ้นนิดๆ
-        fc = (f"[0]scale=1188:2112,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
+        fc = (f"[0]scale=3564:6336,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
               f"[1]format=rgba,fade=in:st=0.1:d=0.35:alpha=1[fg];[bg][fg]overlay=x=0:y='max(0,30-90*t)'")
         ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png'), '-loop', '1', '-i', os.path.join(job, 'shots', f'fg_{k}.png')]
     run(['ffmpeg', '-v', 'error', '-y', *ins_, '-filter_complex', fc, '-t', f'{dd:.3f}', '-r', '30', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '20', seg])
