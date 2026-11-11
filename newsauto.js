@@ -182,16 +182,16 @@ class NewsAuto {
   // ข่าว 1 อัน { url, text } → คลิป (+โพสต์ตาม c.platforms) · คืน null ถ้าบทมีเลขแต่ง
   async makeOne(a, c, log) {
         log(`ข่าว: ${title(a)}`);
+        const anchor = c.anchor && fs.existsSync(c.anchor) ? c.anchor : this.defaultFace();
         let spec, bad = [], tried = [];
         for (let k = 0; k < 3; k++) {
-          spec = await this.news.writeScript(this.metaWin(), a.text, tried);
+          spec = await this.news.writeScript(this.metaWin(), a.text, tried, this.news.duoReady(anchor)); // มีหน้าชาย = ข่าวคู่ชายหญิง
           bad = badNumbers({ shots: [...spec.shots, { sub: (spec.caption || '').replace(/#\S+/g, '') }] }, a.text); // แคปชันโพสต์ด้วย (แฮชแท็กไม่นับ)
           if (!bad.length) break;
           tried = [...new Set([...tried, ...bad])];
           log(`  บทมีเลขที่ไม่อยู่ในข่าว (${bad.join(', ')}) เขียนใหม่`);
         }
         if (bad.length) { log('  เลขแต่งไม่หาย ข้ามข่าวนี้'); return null; }
-        const anchor = c.anchor && fs.existsSync(c.anchor) ? c.anchor : this.defaultFace();
         if (anchor) spec.anchor = anchor;
         // มีคีย์ ElevenLabs = ข่าวอัตโนมัติใช้ Mali เสมอ (kidza ซื้อแล้ว 10 พ.ย. — ช่องเสียงในหน้าข่าวเคยเพี้ยนเป็น F5 แล้วพากย์ผิด)
         const voice = this.news.voices().find((v) => v.id.startsWith('eleven:'))?.id || c.voice || 'edge';

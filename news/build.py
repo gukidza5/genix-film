@@ -51,8 +51,15 @@ for k in range(len(spec['shots'])):
     ms = int((starts[k] + 0.15) * 1000)
     vi += ['-i', vo(k)]
     vf.append(f"[{k}:a]aresample=16000,aformat=channel_layouts=mono,adelay={ms}:all=1[a{k}]")
-run(['ffmpeg', '-v', 'error', '-y', *vi, '-filter_complex', ';'.join(vf) + ';' + ''.join(f'[a{k}]' for k in range(len(vf))) + f"amix=inputs={len(vf)}:normalize=0,apad,atrim=0:{t:.2f}[o]",
-     '-map', '[o]', '-ar', '16000', '-ac', '1', os.path.join(tmp, 'vo_track.wav')])
+def track(ks, name):
+    run(['ffmpeg', '-v', 'error', '-y', *[a for k in ks for a in ('-i', vo(k))],
+         '-filter_complex', ';'.join(vf[k].replace(f'[{k}:a]', f'[{i}:a]', 1) for i, k in enumerate(ks)) + ';' + ''.join(f'[a{k}]' for k in ks)
+         + f"amix=inputs={len(ks)}:normalize=0,apad,atrim=0:{t:.2f}[o]", '-map', '[o]', '-ar', '16000', '-ac', '1', os.path.join(tmp, name)])
+track(list(range(N)), 'vo_track.wav')
+if spec.get('duo'):  # ข่าวคู่: เสียงแยกคน ให้ปากขยับเฉพาะตอนตัวเองพูด (news.js addAnchor)
+    for w in ('m', 'f'):
+        ks = [k for k, s in enumerate(spec['shots']) if s.get('who', 'f') == w]
+        if ks: track(ks, f'vo_track_{w}.wav')
 
 # ต่อช็อตแบบละลาย: ช็อต k เริ่มโผล่ตรง starts[k] พอดี (ช็อตก่อนหน้ายืดท้ายไว้ X วิ) ความยาวรวม = t เท่าเดิม
 video = os.path.join(tmp, 'video.mp4')

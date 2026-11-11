@@ -199,7 +199,7 @@ ipcMain.handle('update:apply', async () => {
   app.quitting = true; app.relaunch(); app.exit(0);
 });
 ipcMain.handle('ai:engine', (_e, set) => engine(set === 'meta' || set === 'gemini' ? set : undefined));
-ipcMain.handle('news:script', (_e, text, bad) => news.writeScript(metaWin, text, Array.isArray(bad) ? bad.map(String) : []).catch((e) => ({ error: e.message })));
+ipcMain.handle('news:script', (_e, text, bad) => news.writeScript(metaWin, text, Array.isArray(bad) ? bad.map(String) : [], news.duoReady(path.join(ROOT, 'presenter', 'face.png'))).catch((e) => ({ error: e.message })));
 ipcMain.handle('news:fetch', (_e, url) => (/^https?:\/\/([a-z]+\.)?(facebook\.com|fb\.watch)\//i.test(url) ? news.fetchFacebook(String(url), flow) : news.fetchArticle(String(url))).catch((e) => ({ error: e.message })));
 // ทำคลิปข่าววิ่งฝั่งนี้ หน้าข่าวสลับไปหน้าอื่นได้ กลับมาถาม news:state แล้วรู้ผล (newsdone)
 let newsBusy = false, newsLast = null;
@@ -242,6 +242,9 @@ if (fs.existsSync(path.join(__dirname, '.git'))) {
     clearTimeout(t);
     t = setTimeout(function again() {
       if (!edited()) return;
+      // ไฟล์ที่กำลังแก้ค้างครึ่งๆ = อย่าเพิ่งรี (11 พ.ย. รีตอนไฟล์พังแล้วแอปเปิดไม่ขึ้น) รอแก้เสร็จค่อยรี
+      const bad = fs.readdirSync(__dirname).filter((f) => f.endsWith('.js')).find((f) => { try { require('vm').compileFunction(fs.readFileSync(path.join(__dirname, f), 'utf8')); return false; } catch { return true; } });
+      if (bad) { t = setTimeout(again, 15000); return; }
       if (newsBusy || job) { t = setTimeout(again, 60000); return; } // รอหนัง/ข่าวที่ทำอยู่จบก่อน ไม่ทิ้งฉากที่เจนค้าง
       send('log', `🔄 โค้ดเปลี่ยน (${f}) รีสตาร์ทแอปเอง งานค้างจะทำต่ออัตโนมัติ`);
       app.quitting = true; app.relaunch(); app.exit(0);

@@ -26,17 +26,25 @@ function voices() {
   return list;
 }
 
-async function writeScript(metaWin, text, bad = []) {
+// ข่าวคู่ (kidza 11 พ.ย.): ผู้ประกาศชาย+หญิงคุยกันแบบรายการข่าวทีวี · ต้องมีหน้าชาย face_m.png ข้างหน้าหญิง + คีย์ ElevenLabs
+const maleFace = (anchor) => (anchor ? path.join(path.dirname(anchor), 'face_m.png') : '');
+const duoReady = (anchor) => !!(eleven.key() && anchor && fs.existsSync(maleFace(anchor)));
+
+async function writeScript(metaWin, text, bad = [], duo = false) {
   const redo = bad.length ? `\nสำคัญ: รอบก่อนบทมีตัวเลข ${bad.join(', ')} ซึ่งไม่มีอยู่ในเนื้อข่าว ห้ามใช้ตัวเลขพวกนี้อีก ให้ตัดออก หรือใช้เฉพาะตัวเลขที่เขียนอยู่ในเนื้อข่าวจริง ๆ (ห้ามแปลงปี ห้ามคำนวณเลขใหม่)` : '';
+  const vel = duo
+    ? `vo_el=คำพูดของผู้ประกาศตาม who เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล พูดแบบผู้ประกาศข่าวทีวีชายหญิงคุยส่งต่อกันในรายการข่าวเช้า มีรับลูกกันบ้าง (เช่น "ใช่ค่ะ" "เรื่องนี้ต้องติดตามนะครับ" ถามอีกคนสั้นๆ) ผู้ชายลงท้ายครับ ผู้หญิงลงท้ายค่ะ แต่ไม่ต้องทุกประโยค ห้ามเรียกชื่อกัน ห้ามใช้ แก/อะ/จริงดิ ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยม ช็อตละ 0–1 แท็ก เลือกจาก [serious] [surprised] [curious] [sighs] [laughs]`
+    : `vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล แต่เล่าแบบผู้หญิงเม้าท์ข่าวกับเพื่อนสาว (แก / อะ / เลยนะ / จริงดิ) ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมตรงจุดสำคัญ ช็อตละ 1–2 แท็ก เลือกจาก [excited] [whispers] [surprised] [laughs] [serious] [sighs]`;
+  const who = duo ? `who="m" (ผู้ประกาศชาย) หรือ "f" (ผู้ประกาศหญิง) สลับกันเป็นธรรมชาติ คนเดียวพูดติดกันไม่เกิน 2 ช็อต ช็อตแรก f ทักคนดูสั้นๆ แล้วเข้าข่าว ช็อตสุดท้ายใครก็ได้ · ` : '';
   const spec = await ask(metaWin, `คุณคือคนเขียนบทคลิปสรุปข่าวแนวตั้ง 55–65 วินาที ภาษาไทย อ่านแล้วตื่นเต้นแบบข่าว
 กฎเหล็ก: ใช้เฉพาะข้อเท็จจริง ตัวเลข วันที่ ที่อยู่ในเนื้อข่าวด้านล่างเท่านั้น ห้ามเดาหรือเติมเอง ห้ามเติมปีถ้าข่าวไม่ได้เขียนปี ห้ามคำนวณตัวเลขใหม่ (บวก ลบ แปลงหน่วย) ·${redo} คนที่ยังไม่มีคำพิพากษาให้เรียก "ผู้ต้องหา"/"ถูกกล่าวหา" และใช้ "ตำรวจแถลงว่า" กับตัวเลขของตำรวจ · ภาษาสุภาพ ไม่ใช้ กู/มึง
 ทำ 8–10 ช็อต แต่ละช็อตเลือก scene จาก: ${Object.entries(SCENES).map(([k, v]) => `${k}=${v}`).join(' | ')}
 ช่อง: head=หัวข้อบนจอสั้นๆ (ใช้ <b>คำ</b> ไฮไลต์เหลือง, <br> ขึ้นบรรทัด) · sub=ซับล่างสั้นๆ · tag=วันที่ (ถ้ามี) · chips=รายการสั้น 2–4 อัน (ถ้ามี) · card=[ป้าย, ตัวเลข, หน่วย] (ถ้าเป็นช็อตตัวเลข)
-vo=คำพูดพากย์ ≤ 110 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล แต่เล่าแบบผู้หญิงเม้าท์ข่าวกับเพื่อนสาว (แก / อะ / เลยนะ / จริงดิ) ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมตรงจุดสำคัญ ช็อตละ 1–2 แท็ก เลือกจาก [excited] [whispers] [surprised] [laughs] [serious] [sighs] เขียนติดกันแบบภาษาพูดปกติ เว้นวรรคเฉพาะระหว่างวลี ห้ามเว้นวรรคทุกคำ (เน้นได้แค่ตัวเลขสำคัญ 1 จุด เช่น "ไม่เกิน ห้า เซนติเมตร") ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
+${who}ตัวย่อทุกตัวใน vo/vo_el/vo_f5 ให้เขียนเป็นเสียงอ่านทีละตัวอักษรตามที่คนไทยอ่านจริง คั่นด้วยขีด เช่น ธ.ก.ส.→ทอ-กอ-สอ (ธ อ่าน ทอ ไม่ใช่ ธอ) ป.ป.ช.→ปอ-ปอ-ชอ ส.ส.→สอ-สอ ก.ล.ต.→กอ-ลอ-ตอ ครั้งแรกที่พูดถึงหน่วยงานใช้ชื่อเต็มได้ถ้าไม่ยาวเกิน · vo=คำพูดพากย์ ≤ 110 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · ${vel} เขียนติดกันแบบภาษาพูดปกติ เว้นวรรคเฉพาะระหว่างวลี ห้ามเว้นวรรคทุกคำ (เน้นได้แค่ตัวเลขสำคัญ 1 จุด เช่น "ไม่เกิน ห้า เซนติเมตร") ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
 img=ภาษาอังกฤษ บรรยายภาพถ่ายของช็อตนี้ (สถานที่ คน การกระทำ อารมณ์ มุมกล้อง) คนในภาพเป็นคนไทยทั่วไปไม่เหมือนคนจริง ห้ามมีตัวหนังสือในภาพ
 person (ระดับบนสุด)=ชื่อคนดังที่เป็นตัวหลักของข่าว เฉพาะคนที่คนทั้งประเทศรู้จัก (ดารา นักร้อง อินฟลูดัง นักการเมือง นักกีฬา) เขียนแบบที่ค้นรูปเจอ เช่น "ชื่อเล่น ชื่อจริง นามสกุล" · ข่าวคนธรรมดา/ผู้ต้องหาทั่วไป/ไม่แน่ใจว่าดัง ใส่ "" · sfx เลือกจาก impact_big/whoosh_cine/whoosh_fast/popclick/bass_hit/hit_drum หรือ null · ช็อตแรกเปิดด้วยประโยคที่ทำให้อยากดูต่อ ช็อตสุดท้าย scene=cta ถามคนดูให้คอมเมนต์
 ตอบเป็น JSON อย่างเดียว คั่นด้วย GENIX_START ... GENIX_END:
-GENIX_START{"title":"","person":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_el":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
+GENIX_START{"title":"","person":"","source":"ชื่อสำนักข่าว (วันที่)","caption":"แคปชันโพสต์ Reels: บรรทัดแรกพาดหัวดึงคน แล้วเล่าเนื้อหาข่าว 4–6 บรรทัด (ข้อเท็จจริงจากข่าวเท่านั้น) + บรรทัดถามคนดู + แฮชแท็ก 5–8 อัน (ชื่อคน/เรื่อง/#ข่าววันนี้ #สรุปข่าว) + บรรทัดที่มา","shots":[{${duo ? '"who":"f",' : ''}"scene":"intro","tag":"","head":"","chips":[],"card":null,"sub":"","vo":"","vo_el":"","vo_f5":"","img":"","emo":"โกรธ","sfx":"impact_big"}]}GENIX_END
 
 เนื้อข่าว:
 ${text}`, { want: 'json', timeoutMs: 240000 });
@@ -165,13 +173,85 @@ async function animeScenes(dir, spec, log) {
 }
 
 // ผู้ประกาศปากขยับ (MuseTalk) วงกลมมุมขวาบน · ไม่มี MuseTalk/การ์ดจอไม่ว่าง = ใช้รูปนิ่งในวงกลมแทน
-async function addAnchor(dir, face, src, out, { log, gpuBusy }) {
+// face2 = ผู้ประกาศชาย (ข่าวคู่): กรอบซ้าย ปากขยับตาม vo_track_m.wav · หญิงกรอบขวาตาม vo_track_f.wav (build.py แยกให้)
+// vo = ไฟล์เสียงแต่ละช็อต (หลัง build.py ตัดเงียบแล้ว) · who = 'm'/'f' ต่อช็อต (ข่าวคู่)
+async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], who: by = [] }) {
   const sq = "crop=w='min(iw,ih)*0.8':h='min(iw,ih)*0.8':x='(iw-ow)/2':y=0,scale=512:512";
-  let talk = null;
-  if (LipSync.installed() && !gpuBusy()) {
+  const duo = face2 && fs.existsSync(path.join(dir, 'tmp', 'vo_track_m.wav')) && fs.existsSync(path.join(dir, 'tmp', 'vo_track_f.wav'));
+  const who = duo ? [{ face: face2, track: 'vo_track_m.wav', left: true, w: 'm' }, { face, track: 'vo_track_f.wav', w: 'f' }] : [{ face, track: 'vo_track.wav' }];
+  const talks = who.map(() => null);
+  if (!gpuBusy()) {
+    // แบบหลัก (kidza 11 พ.ย. MuseTalk ปากไม่ตรง ไม่ธรรมชาติ): Wan S2V ทำหน้าพูดทั้งหน้าจากเสียงแต่ละช็อต ช่วงที่ไม่ได้พูดใช้ท่านั่งเฉย
+    // เวลาเริ่มช็อตคิดแบบเดียวกับ build.py (เสียง + หายใจ 0.45 วิ, เสียงเริ่มหลังต้นช็อต 0.15 วิ)
+    const lens = []; for (const f of vo) lens.push(await duration(f));
+    const starts = lens.reduce((a, l, k) => (a.push(k ? a[k - 1] + lens[k - 1] + 0.45 : 0), a), []);
+    const total = await duration(src);
+    for (const [i, a] of who.entries()) {
+      if (!vo.length) break;
+      try {
+        log(`👄 ผู้ประกาศ${duo ? (a.left ? 'ชาย' : 'หญิง') : ''}พูด (Wan S2V ช็อตละ ~2–3 นาที)`);
+        talks[i] = await s2vTrack(dir, a.face, vo.map((f, k) => ({ wav: f, len: lens[k], at: starts[k] + 0.15, mine: !duo || (by[k] || 'f') === a.w })), total, sq, log, `a${i}`);
+      } catch (e) { log('⚠️ S2V ไม่ได้ ใช้ MuseTalk แทน: ' + e.message.slice(0, 150)); }
+    }
+    await comfy.free();
+  }
+  if (talks.some((t) => !t) && LipSync.installed() && !gpuBusy()) {
     const ls = new LipSync(log);
     try {
-      // วิดีโอนิ่งของหน้า (MuseTalk แคชตามไฟล์+เวลาแก้ไข → ทำใหม่เฉพาะตอนเปลี่ยนหน้า)
+      for (const [i, a] of who.entries()) {
+        if (talks[i]) continue;
+        await ls.start(await idleClip(a.face, sq, log));
+        log(`👄 ผู้ประกาศ${duo ? (a.left ? 'ชาย' : 'หญิง') : ''}พูดตามเสียงพากย์ (MuseTalk)`);
+        const t = path.join(dir, 'tmp', `anchor_talk${i}.mp4`);
+        await ls.speak(path.join(dir, 'tmp', a.track), t, 600000);
+        talks[i] = t;
+      }
+    } catch (e) { log('⚠️ ผู้ประกาศปากขยับไม่ได้ ใช้รูปนิ่งแทน: ' + e.message.slice(0, 150)); }
+    finally { ls.stop(); }
+  }
+  // กรอบ 3:4 ขอบทอง มุมล่าง (kidza ขอ 9 พ.ย.) ข่าวคู่ = ชายซ้าย หญิงขวา กรอบเล็กลงนิด
+  const W = duo ? 330 : 360, H = W * 4 / 3, R = 8, y = 1920 - H - 2 * R - 60;
+  const ins = [], fc = [];
+  let prev = '[0:v]';
+  for (const [i, a] of who.entries()) {
+    const talk = talks[i];
+    ins.push(...(talk ? ['-i', talk] : ['-loop', '1', '-i', a.face]));
+    const crop = talk ? "crop=w='ih*3/4':h=ih" : "crop=w='min(iw,ih*3/4)':h='min(iw,ih*3/4)*4/3':x='(iw-ow)/2':y=0";
+    const x = a.left ? 30 : 1080 - W - 2 * R - 30, o = i === who.length - 1 ? '[v]' : `[o${i}]`;
+    fc.push(`[${i + 1}:v]${crop},scale=${W}:${H},pad=${W + 2 * R}:${H + 2 * R}:${R}:${R}:color=0xffd84a[f${i}]`, `${prev}[f${i}]overlay=${x}:${y}:eof_action=repeat${o}`);
+    prev = o;
+  }
+  const len = await duration(src);
+  await sh('ffmpeg', ['-v', 'error', '-y', '-i', src, ...ins, '-filter_complex', fc.join(';'), '-map', '[v]', '-map', '0:a', '-t', len.toFixed(3), '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'copy', out], {}, log);
+  return out;
+}
+
+// ผู้ประกาศ 1 คนตลอดคลิป: ท่านั่งเฉยวนลูปเป็นพื้น แปะคลิปพูดจาก S2V ตรงเวลาที่ตัวเองพูด (ครอปแบบเดียวกับท่าเฉย ภาพไม่กระโดด)
+async function s2vTrack(dir, face, shots, total, sq, log, tag) {
+  const idle = await idleClip(face, sq, log);
+  const parts = [];
+  for (const [k, s] of shots.entries()) {
+    if (!s.mine) continue;
+    const f = path.join(dir, 'tmp', `talk_${tag}_${k}.mp4`);
+    if (!fs.existsSync(f)) await comfy.generate({ kind: 'video', image: face, wav: s.wav, seconds: s.len, aspect: '1:1', out: f, log,
+      motion: 'A TV news anchor talking to the camera, natural lip movement matching the speech, subtle head movement and natural blinking, calm professional friendly expression, static camera, same framing' });
+    parts.push({ f, at: s.at });
+  }
+  const res = path.join(dir, 'tmp', `anchor_${tag}.mp4`);
+  const fc = ['[0:v]fps=25,scale=512:512,setpts=PTS-STARTPTS[b0]']; // ท่าเฉยครอปมาแล้ว
+  parts.forEach((p, i) => fc.push(`[${i + 1}:v]fps=25,${sq},setpts=PTS-STARTPTS+${p.at.toFixed(3)}/TB[p${i}]`, `[b${i}][p${i}]overlay=0:0:eof_action=pass[b${i + 1}]`));
+  await sh('ffmpeg', ['-v', 'error', '-y', '-stream_loop', '-1', '-i', idle, ...parts.flatMap((p) => ['-i', p.f]), '-filter_complex', fc.join(';'),
+    '-map', `[b${parts.length}]`, '-t', total.toFixed(3), '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '18', res], {}, log);
+  return res;
+}
+
+const duration = (f) => new Promise((res) => {
+  const p = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { windowsHide: true });
+  let o = ''; p.stdout.on('data', (d) => (o += d)); p.on('close', () => res(parseFloat(o) || 60));
+});
+
+// วิดีโอนิ่งของหน้า (MuseTalk แคชตามไฟล์+เวลาแก้ไข → ทำใหม่เฉพาะตอนเปลี่ยนหน้า)
+async function idleClip(face, sq, log) {
       const m = Math.floor(fs.statSync(face).mtimeMs);
       let av = path.join(path.dirname(face), `anchor_live_${m}.mp4`);
       // ท่าขยับ (หัว/ไหล่/กระพริบตา) จาก Wan I2V ทำครั้งเดียวต่อหน้า แล้ว MuseTalk ขยับปากทับ (kidza 10 พ.ย.: รูปนิ่งแข็งเป็นหิน)
@@ -191,21 +271,7 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy }) {
         av = path.join(path.dirname(face), `anchor_${m}.mp4`);
         if (!fs.existsSync(av)) await sh('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', face, '-t', '4', '-r', '25', '-vf', sq, '-pix_fmt', 'yuv420p', av], {}, log);
       }
-      await ls.start(av);
-      log('👄 ผู้ประกาศพูดตามเสียงพากย์');
-      talk = path.join(dir, 'tmp', 'anchor_talk.mp4');
-      await ls.speak(path.join(dir, 'tmp', 'vo_track.wav'), talk, 600000);
-    } catch (e) { talk = null; log('⚠️ ผู้ประกาศปากขยับไม่ได้ ใช้รูปนิ่งแทน: ' + e.message.slice(0, 150)); }
-    finally { ls.stop(); }
-  }
-  // กรอบสี่เหลี่ยม 3:4 ขอบทอง มุมขวาล่าง (kidza ขอ 9 พ.ย.) — ซับย้ายขึ้นไป 1150 ใน render.js
-  const W = 360, H = 480, R = 8;
-  const x = 1080 - W - 2 * R - 30, y = 1920 - H - 2 * R - 60;
-  const vin = talk ? ['-i', talk] : ['-loop', '1', '-i', face];
-  const crop = talk ? "crop=w='ih*3/4':h=ih" : "crop=w='min(iw,ih*3/4)':h='min(iw,ih*3/4)*4/3':x='(iw-ow)/2':y=0";
-  const fc = `[1:v]${crop},scale=${W}:${H},pad=${W + 2 * R}:${H + 2 * R}:${R}:${R}:color=0xffd84a[f];[0:v][f]overlay=${x}:${y}:eof_action=repeat:shortest=${talk ? 0 : 1}[v]`;
-  await sh('ffmpeg', ['-v', 'error', '-y', '-i', src, ...vin, '-filter_complex', fc, '-map', '[v]', '-map', '0:a', '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-shortest', out], {}, log);
-  return out;
+      return av;
 }
 
 const probe = (f) => new Promise((res) => {
@@ -307,19 +373,21 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
     await animeScenes(dir, spec, log).catch((e) => log('⚠️ ฉากอนิเมะไม่ได้ ใช้แบบเวกเตอร์: ' + e.message));
   }
   let sub = '';
+  // บทที่เขียนแบบข่าวคู่ (มี who) + มีหน้าชาย + ElevenLabs → ชายใช้เสียง Tonce หญิงใช้ Mali
+  let duo = voice.startsWith('eleven:') && spec.shots.some((s) => s.who === 'm') && duoReady(spec.anchor);
   if (voice.startsWith('eleven:')) {
-    log('🎙️ พากย์ด้วย ElevenLabs (Mali เม้าท์)');
+    log(duo ? '🎙️ พากย์ด้วย ElevenLabs (ข่าวคู่ ชาย Tonce + หญิง Mali)' : '🎙️ พากย์ด้วย ElevenLabs (Mali เม้าท์)');
     try {
       fs.mkdirSync(path.join(dir, 'el'), { recursive: true });
       for (const [k, s] of spec.shots.entries()) {
         const mp3 = path.join(dir, 'el', `vo${k}.mp3`), wav = path.join(dir, 'el', `vo${k}.wav`);
         if (!fs.existsSync(wav)) {
-          await eleven.tts(s.vo_el || s.vo, mp3, voice.slice(7));
+          await eleven.tts(s.vo_el || s.vo, mp3, duo && s.who === 'm' ? eleven.MALE : voice.slice(7));
           await sh('ffmpeg', ['-v', 'error', '-y', '-i', mp3, '-ar', '44100', wav], {}, log);
         }
       }
       sub = 'el';
-    } catch (e) { log('⚠️ ElevenLabs ไม่ได้ ใช้เสียง Niwat แทน: ' + e.message.slice(0, 200)); voice = 'edge'; }
+    } catch (e) { log('⚠️ ElevenLabs ไม่ได้ ใช้เสียง Niwat แทน: ' + e.message.slice(0, 200)); voice = 'edge'; duo = false; }
   } else if (voice !== 'edge') {
     log(`🎙️ พากย์ด้วย ${voice}${gpuBusy() ? ' (CPU เพราะการ์ดจอทำละครอยู่ — ช้าหน่อย)' : ''}`);
     sub = 'f5';
@@ -330,10 +398,12 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
     if (miss.length) throw new Error(`F5 พากย์ไม่ออก ช็อต ${miss.map((k) => k + 1).join(', ')} — ลองเลือกเสียง Niwat`);
   } else log('🎙️ พากย์ด้วย Niwat');
   log('🎬 ประกอบคลิป');
+  spec.duo = duo; fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 1)); // build.py แยกเสียงชาย/หญิงให้ปากขยับคนละกรอบ
   await sh('python', [path.join(DIR, 'build.py'), dir, ...(sub ? [sub] : [])], {}, log);
   const built = path.join(dir, sub ? `out_${sub}.mp4` : 'out.mp4');
   if (spec.anchor && fs.existsSync(spec.anchor)) { // ผู้ประกาศมุมขวาล่างทุกแบบ (kidza 10 พ.ย. ขอคืนหลังเปลี่ยนเป็นแบบรูปเต็มจอ)
-    try { await addAnchor(dir, spec.anchor, built, path.join(dir, 'output', 'ข่าว.mp4'), { log, gpuBusy }); }
+    try { await addAnchor(dir, spec.anchor, built, path.join(dir, 'output', 'ข่าว.mp4'), { log, gpuBusy, face2: duo ? maleFace(spec.anchor) : null,
+      vo: spec.shots.map((_, k) => (sub ? path.join(dir, sub, `vo${k}.wav`) : path.join(dir, 'tmp', `vo${k}.mp3`))), who: spec.shots.map((s) => s.who) }); }
     catch (e) { log('⚠️ ใส่ผู้ประกาศไม่ได้: ' + e.message.slice(0, 200)); fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4')); }
   } else fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4'));
   fs.writeFileSync(path.join(dir, 'output', 'ข่าว_post.txt'), spec.caption || `${spec.title}\n\n#สรุปข่าว #ข่าววันนี้\nที่มา: ${spec.source || ''}`);
@@ -341,4 +411,4 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
   return dir;
 }
 
-module.exports = { voices, writeScript, make, fetchArticle, fetchFacebook, fbPagePosts, SCENES, animeScenes, addAnchor };
+module.exports = { voices, writeScript, duoReady, make, fetchArticle, fetchFacebook, fbPagePosts, SCENES, animeScenes, addAnchor };

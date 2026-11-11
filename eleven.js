@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const VOICES = [{ id: '7XW5JhaNn90bnFojQ5DA', name: 'Mali — ผู้หญิงเม้าท์กับเพื่อน (ElevenLabs ใช้เครดิต)' }];
+const MALE = 'yq05eeRaHPMGuWTVpqeP'; // Tonce - Friendly ผู้ชายไทย (kidza เลือก 9 พ.ย.) = ผู้ประกาศชายในข่าวคู่
 const keyFile = () => path.join(require('electron').app.getPath('userData'), 'elevenlabs.key');
 let lastErr = '';
 const key = () => { try { return fs.readFileSync(keyFile(), 'utf8').replace(/^﻿/, '').trim(); } catch (e) { lastErr = e.message; return ''; } };
@@ -22,4 +23,4 @@ async function tts(text, out, voiceId, { stability = 0.32, similarity = 0.75, ti
   return out;
 }
 
-module.exports = { VOICES, key, setKey, tts, keyFile, lastErr: () => lastErr };
+module.exports = { VOICES, MALE, key, setKey, tts, keyFile, lastErr: () => lastErr };
