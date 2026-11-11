@@ -6,3 +6,4 @@ gemini.key
 test-out-*/
 __pycache__/
 *.apk
+*.lnk

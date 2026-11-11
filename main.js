@@ -252,6 +252,9 @@ if (fs.existsSync(path.join(__dirname, '.git'))) {
 }
 // เช็คตอนเปิดแอป: อ่านคีย์/ตั้งค่าเจอไหม (10 พ.ย. แอปจริงมองไม่เห็นคีย์ ElevenLabs ทั้งที่ไฟล์อยู่)
 app.whenReady().then(() => {
+  // ไฟล์ .bat ใส่ไอคอนไม่ได้ → ทำทางลัดมีไอคอนไว้ในโฟลเดอร์แอป ให้รู้ว่ากดอันไหนเปิด (kidza 11 พ.ย. หาตัวเปิดไม่เจอ)
+  const lnk = path.join(__dirname, 'เปิด Genix Film.lnk');
+  if (process.platform === 'win32' && !fs.existsSync(lnk)) shell.writeShortcutLink(lnk, 'create', { target: path.join(__dirname, 'Genix Film.bat'), cwd: __dirname, icon: path.join(__dirname, 'icon.ico'), iconIndex: 0 });
   const el = require('./eleven'), n = require('./notify');
   send('log', `🩺 เปิดแอป: userData=${app.getPath('userData')} · ElevenLabs=${el.key() ? 'มี' : 'ไม่มี (' + el.keyFile() + ': ' + el.lastErr() + ')'} · แจ้งเตือน=${n.hasToken() ? 'มี' : 'ไม่มี'} · ข่าวอัตโนมัติ=${newsAuto.cfg().on ? 'เปิด' : 'ปิด'} ${newsAuto.cfg().sites.length} เว็บ`);
 });
