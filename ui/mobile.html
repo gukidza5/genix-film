@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genix Film รีโมท</title>
+<style>
+  :root { --bg:#0b0d17; --card:#161a2b; --line:#2a3050; --tx:#e8eaf6; --mut:#8c93b8; --acc:#ff4d6d; --ok:#3ddc97; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:16px/1.45 system-ui,-apple-system,"Noto Sans Thai",sans-serif; padding:12px 16px 40px; }
+  h1 { font-size:20px; margin:4px 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card h2 { font-size:16px; margin:0 0 10px; }
+  input, select, textarea { width:100%; font:inherit; color:var(--tx); background:#0f1220; border:1px solid var(--line); border-radius:10px; padding:11px; margin:0 0 8px; }
+  textarea { min-height:70px; }
+  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  button { width:100%; font:inherit; font-weight:600; border:0; border-radius:10px; padding:13px; background:var(--acc); color:#fff; }
+  button.alt { background:#2a3050; }
+  button:disabled { opacity:.5; }
+  label.chk { display:flex; align-items:center; gap:8px; margin:0 0 10px; color:var(--mut); }
+  label.chk input { width:auto; margin:0; }
+  .st { font-size:15px; } .mut { color:var(--mut); font-size:13px; }
+  .bar { height:8px; background:#0f1220; border-radius:6px; overflow:hidden; margin:6px 0; } .bar i { display:block; height:100%; background:var(--ok); }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:12px; color:var(--mut); max-height:220px; overflow:auto; margin:8px 0 0; }
+  .clip { padding:10px 0; border-top:1px solid var(--line); } .clip:first-child { border-top:0; }
+  video { width:100%; border-radius:10px; margin-top:6px; background:#000; }
+  .toast { position:fixed; left:16px; right:16px; bottom:16px; background:#222844; border:1px solid var(--line); padding:12px; border-radius:12px; display:none; }
+  .sw { display:flex; justify-content:space-between; align-items:center; }
+</style>
+</head>
+<body>
+<h1>🎬 Genix Film รีโมท</h1>
+
+<div class="card" id="nokey" style="display:none">
+  <h2>🔑 ใส่รหัส</h2>
+  <p class="mut">ดูลิงก์เต็มในบันทึกของแอปที่บ้าน (บรรทัด "สั่งจากมือถือ") เปิดลิงก์นั้นครั้งเดียว มือถือจะจำไว้</p>
+  <input id="keyin" placeholder="รหัส"><button onclick="setKey($('keyin').value)">เข้า</button>
+</div>
+
+<div id="app" style="display:none">
+  <div class="card">
+    <h2>📊 ตอนนี้</h2>
+    <div class="st" id="st">…</div>
+    <pre id="log"></pre>
+  </div>
+
+  <div class="card">
+    <h2>📰 ทำข่าวจากลิงก์</h2>
+    <input id="url" type="url" placeholder="วางลิงก์ข่าว หรือโพสต์เฟส">
+    <label class="chk"><input id="post" type="checkbox" checked> เสร็จแล้วโพสต์เลย (ตามช่องที่ตั้งในข่าวอัตโนมัติ)</label>
+    <button onclick="news()">ทำข่าว</button>
+  </div>
+
+  <div class="card">
+    <h2>🎞️ ทำหนังสั้น</h2>
+    <select id="genre">
+      <option>ดราม่าชีวิต</option><option>สยองขวัญ</option><option>ตลก</option><option>โรแมนติก</option>
+      <option>แอ็คชัน</option><option>ลึกลับ สืบสวน</option><option>แฟนตาซี</option><option>คำคมบาดใจ</option>
+    </select>
+    <textarea id="idea" placeholder="ไอเดียตั้งต้น (ไม่ใส่ก็ได้)"></textarea>
+    <div class="row">
+      <label class="mut">EP<input id="eps" type="number" min="1" max="10" value="1"></label>
+      <label class="mut">ฉาก/EP<input id="scenes" type="number" min="2" max="16" value="12"></label>
+    </div>
+    <button onclick="film()">เริ่มทำหนัง</button>
+    <p class="mut">ใช้ ComfyUI ในเครื่อง + เสียงตามที่ตั้งในแอปล่าสุด · มีงานอยู่จะต่อคิว</p>
+    <button class="alt" onclick="stop()">⏹ หยุดหนังที่ทำอยู่ (ล้างคิว)</button>
+  </div>
+
+  <div class="card">
+    <div class="sw"><h2 style="margin:0">🤖 ข่าวอัตโนมัติ</h2><label class="chk" style="margin:0"><input id="auto" type="checkbox" onchange="auto(this.checked)"> เปิด</label></div>
+    <p class="mut" id="autoinfo"></p>
+  </div>
+
+  <div class="card">
+    <h2>🎬 คลิปล่าสุด</h2>
+    <div id="clips" class="mut">…</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let K = new URLSearchParams(location.search).get('k');
+try { if (K) localStorage.setItem('gk', K); else K = localStorage.getItem('gk'); } catch {}
+if (K) history.replaceState(null, '', '/'); // ไม่ให้รหัสค้างในแถบที่อยู่
+function setKey(k) { K = k.trim(); try { localStorage.setItem('gk', K); } catch {} boot(); }
+function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 4000); }
+async function api(p, body) {
+  const r = await fetch(p, { method: body ? 'POST' : 'GET', headers: { 'x-key': K || '', 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 403) { $('app').style.display = 'none'; $('nokey').style.display = 'block'; throw new Error('รหัสไม่ถูก'); }
+  if (j.error) throw new Error(j.error);
+  return j;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function refresh() {
+  const s = await api('/api/state');
+  $('nokey').style.display = 'none'; $('app').style.display = 'block';
+  const lines = [];
+  if (s.job) {
+    const p = s.job.progress, pct = p && p.total ? Math.round((p.done / p.total) * 100) : null;
+    lines.push(`🎞️ ทำหนัง: <b>${esc(s.job.title || s.job.idea || s.job.genre)}</b>${s.job.paused ? ' (พักให้ข่าวทำก่อน)' : ''}`);
+    if (p) lines.push(`${esc(p.label || '')}<div class="bar"><i style="width:${pct || 0}%"></i></div>`);
+  } else lines.push('🎞️ หนัง: ว่าง');
+  if (s.queue.length) lines.push(`⏳ คิวหนัง: ${s.queue.map(esc).join(' · ')}`);
+  lines.push(s.newsBusy ? '📰 ข่าว: <b>กำลังทำ</b>' : '📰 ข่าว: ว่าง');
+  if (s.lastError) lines.push(`❌ ล่าสุดพัง: ${esc(s.lastError.title)} — ${esc(s.lastError.msg)}`);
+  $('st').innerHTML = lines.join('<br>');
+  $('log').textContent = s.log.join('\n'); $('log').scrollTop = 1e9; // บรรทัดล่าสุดอยู่ล่าง
+  $('auto').checked = s.auto.on;
+  $('autoinfo').textContent = `ทุก ${s.auto.everyH} ชม. ${s.auto.start}:00–${s.auto.end}:00 · ${s.auto.sites} เว็บ · โพสต์: ${s.auto.platforms.join(', ') || '-'}${s.auto.last ? ' · ทำล่าสุด ' + new Date(s.auto.last).toLocaleString('th-TH') : ''}`;
+}
+async function clips() {
+  const c = await api('/api/clips');
+  $('clips').innerHTML = c.length ? c.slice(0, 12).map((x, i) => `<div class="clip"><div>${x.mode === 'news' ? '📰' : '🎞️'} ${esc(x.title)} <span class="mut">${esc(x.name)}</span></div>
+    <div class="mut">${new Date(x.created).toLocaleString('th-TH')} · ${Object.keys(x.posted || {}).join(', ') || 'ยังไม่โพสต์'}</div>
+    <button class="alt" style="margin-top:6px" onclick="play(this, ${i})">▶ ดูคลิป</button></div>`).join('') : 'ยังไม่มีคลิป';
+  clips.list = c;
+}
+function play(btn, i) {
+  const v = document.createElement('video');
+  v.controls = true; v.playsInline = true; v.src = `/clip?k=${encodeURIComponent(K)}&f=${encodeURIComponent(clips.list[i].file)}`;
+  btn.replaceWith(v); v.play().catch(() => {});
+}
+async function news() {
+  const url = $('url').value.trim();
+  if (!url) return toast('วางลิงก์ก่อน');
+  try { await api('/api/news', { url, post: $('post').checked }); $('url').value = ''; toast('สั่งแล้ว กำลังทำข่าว (ประมาณ 5–15 นาที) เสร็จแล้วแจ้ง LINE'); refresh(); } catch (e) { toast('❌ ' + e.message); }
+}
+async function film() {
+  try {
+    const r = await api('/api/film', { genre: $('genre').value, idea: $('idea').value, eps: $('eps').value, scenes: $('scenes').value });
+    toast(r.queued ? `เข้าคิวแล้ว (คิวที่ ${r.queued})` : 'เริ่มทำหนังแล้ว'); $('idea').value = ''; refresh();
+  } catch (e) { toast('❌ ' + e.message); }
+}
+async function stop() { if (!confirm('หยุดหนังที่ทำอยู่ และล้างคิวทั้งหมด?')) return; try { await api('/api/stop', {}); toast('สั่งหยุดแล้ว'); } catch (e) { toast('❌ ' + e.message); } }
+async function auto(on) { try { await api('/api/auto', { on }); toast(on ? 'เปิดข่าวอัตโนมัติแล้ว' : 'ปิดข่าวอัตโนมัติแล้ว'); refresh(); } catch (e) { toast('❌ ' + e.message); } }
+
+async function boot() {
+  if (!K) { $('nokey').style.display = 'block'; return; }
+  try { await refresh(); await clips(); } catch (e) { toast('❌ ' + e.message); }
+}
+boot();
+setInterval(() => K && refresh().catch(() => {}), 8000);
+</script>
+</body>
+</html>

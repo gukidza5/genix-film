@@ -40,6 +40,9 @@ function badNumbers(spec, text) {
   return [...new Set(onScreen.match(/\d+(\.\d+)?/g) || [])].filter((n) => !has(n) && !years.includes(n) && !yearOk(n));
 }
 
+const isFb = (u) => /^https?:\/\/([a-z]+\.)?facebook\.com\//i.test(u);
+const title = (a) => ((a.text.match(/หัวข้อ: (.*)/) || [])[1] || a.text.split('\n').find((l) => l.trim() && !l.startsWith('ที่มา:')) || a.url).slice(0, 140);
+
 class NewsAuto {
   // deps: { userData, root, news, ask, metaWin(), poster, listClips, log, busy(): bool, setBusy(bool), defaultFace() }
   constructor(deps) {
@@ -69,7 +72,7 @@ class NewsAuto {
     // 23:30 เก็บยอดวิว + สรุปเข้า LINE วันละครั้ง
     if (c.on && now.getHours() === 23 && now.getMinutes() >= 30 && c.statsDay !== today && !this.running && !this.busy()) {
       this.cfg({ statsDay: today });
-      return this.dailyStats().catch((e) => this.log('❌ เก็บยอดวิว: ' + e.message));
+      return this.dailyStats().catch((e) => this.log('❌ เก็บยอดวิว: ' + e.message)).finally(() => this.cleanup());
     }
     const slot = this.slotNow(c);
     if (!c.on || !slot || slot === c.lastSlot || this.running || this.busy()) return;
@@ -80,6 +83,20 @@ class NewsAuto {
       if (r.dir) await this.say(`✅ ข่าว ${at} ${r.posted ? 'โพสต์แล้ว' : 'ทำเสร็จ (ไม่ได้ติ๊กที่โพสต์)'}\n${r.title}\n${Object.entries(r.posted || {}).map(([p, v]) => `${PF[p] || p}: ${v === 'ok' || /^\d{4}-/.test(v) ? '✓' : v === 'dry' ? 'โหมดทดลอง' : '✗ ' + String(v).replace(/^error: /, '').slice(0, 120)}`).join('\n')}`);
       else if (r.skipped === 'all failed') await this.say(`⚠️ ข่าว ${at}: ทำไม่ได้สักข่าว (บทมีเลขแต่ง/เขียนบทพัง) ดูบันทึกในแอป`);
     } catch (e) { await this.say(`❌ ข่าว ${at} พัง: ${e.message.slice(0, 300)}`); throw e; }
+  }
+  // kidza 11 พ.ย.: ลบคลิปข่าวที่โพสต์ครบแล้วทุกวัน (หลังเก็บยอดวิว 23:30) · โพสต์ไม่ผ่านสักช่อง/ยังไม่โพสต์ = เก็บไว้ให้โพสต์ซ้ำ
+  cleanup() {
+    const ok = (v) => v === 'ok' || /^\d{4}-/.test(String(v));
+    let n = 0;
+    for (const d of fs.readdirSync(this.root)) {
+      if (!/-news$/.test(d)) continue;
+      const dir = path.join(this.root, d);
+      const vals = Object.values(readJson(path.join(dir, 'posted.json'), {})).flatMap((o) => Object.values(o || {}));
+      if (!vals.length || !vals.every(ok)) continue;
+      try { fs.rmSync(dir, { recursive: true, force: true }); n++; } catch (e) { this.log(`⚠️ ลบ ${d} ไม่ได้: ${e.message}`); }
+    }
+    if (n) { this.log(`🧹 ลบคลิปข่าวที่โพสต์แล้ว ${n} อัน`); this.say(`🧹 ลบคลิปข่าวที่โพสต์แล้ว ${n} อัน (ที่โพสต์ไม่ผ่านยังเก็บไว้)`); }
+    return n;
   }
   say(text) { return line(text).catch((e) => this.log('⚠️ แจ้ง LINE ไม่ได้: ' + e.message)); }
 
@@ -103,7 +120,6 @@ class NewsAuto {
     try {
       const seen = new Set(readJson(this.seenFile, []));
       log(`ดึงข่าวจาก ${c.sites.length} เว็บ`);
-      const isFb = (u) => /^https?:\/\/([a-z]+\.)?facebook\.com\//i.test(u);
       let cand = [];
       for (const s of c.sites) {
         try {
@@ -126,7 +142,6 @@ class NewsAuto {
       }
       if (!arts.length) { log('อ่านเนื้อข่าวไม่ได้สักข่าว รอบนี้ข้าม'); return { skipped: 'unreadable' }; }
       // หัวข่าว: หัวข้อจากเว็บ ถ้าไม่มี (โพสต์เฟสล้วน) ใช้บรรทัดแรกของโพสต์
-      const title = (a) => ((a.text.match(/หัวข้อ: (.*)/) || [])[1] || a.text.split('\n').find((l) => l.trim() && !l.startsWith('ที่มา:')) || a.url).slice(0, 140);
       const titles = arts.map((a, i) => `${i}. ${title(a)}`).join('\n');
       // เว็บเดียวลงเรื่องเดิมหลายลิงก์ (บุ๋มคืนที่ 1, 2, …) → บอก AI เรื่องที่ทำไปแล้ว ห้ามซ้ำ
       const done = (c.recent || []).slice(-12).join('\n') || '-';
@@ -139,6 +154,33 @@ class NewsAuto {
       for (const i of order.slice(0, 3)) {
         const a = arts[i];
         seen.add(a.url); fs.writeFileSync(this.seenFile, JSON.stringify([...seen].slice(-2000)));
+        const r = await this.makeOne(a, c, log);
+        if (r) return r;
+      }
+      log('ทำไม่ได้สักข่าวในรอบนี้');
+      return { skipped: 'all failed' };
+    } finally { this.running = false; this.setBusy(false); }
+  }
+
+  // สั่งจากมือถือ (remote.js): ลิงก์ข่าว/โพสต์เฟส 1 อัน → บท → คลิป → โพสต์ (post=false = ทำเสร็จเก็บไว้)
+  async fromUrl(url, post = true) {
+    if (this.running) throw new Error('กำลังทำข่าวอยู่ รอรอบนี้เสร็จก่อน');
+    this.running = true; this.setBusy(true);
+    const log = (m) => this.log('📱 ' + m);
+    try {
+      log('อ่านข่าว ' + url);
+      const text = isFb(url) ? await this.news.fetchFacebook(url, this.flow) : await this.news.fetchArticle(url);
+      if (!text || text.length < 250) throw new Error('อ่านเนื้อข่าวไม่ได้ (สั้นเกิน/เปิดไม่ได้)');
+      const c = this.cfg();
+      const r = await this.makeOne({ url, text }, { ...c, platforms: post ? c.platforms : [] }, log);
+      if (!r) throw new Error('บทมีเลขที่ไม่อยู่ในข่าว เขียนใหม่ 3 รอบไม่หาย ข้าม');
+      await this.say(`📱 ข่าวที่สั่งจากมือถือ ${r.posted ? 'โพสต์แล้ว' : 'ทำเสร็จ (ไม่โพสต์)'}\n${r.title}`);
+      return r;
+    } finally { this.running = false; this.setBusy(false); }
+  }
+
+  // ข่าว 1 อัน { url, text } → คลิป (+โพสต์ตาม c.platforms) · คืน null ถ้าบทมีเลขแต่ง
+  async makeOne(a, c, log) {
         log(`ข่าว: ${title(a)}`);
         let spec, bad = [], tried = [];
         for (let k = 0; k < 3; k++) {
@@ -148,7 +190,7 @@ class NewsAuto {
           tried = [...new Set([...tried, ...bad])];
           log(`  บทมีเลขที่ไม่อยู่ในข่าว (${bad.join(', ')}) เขียนใหม่`);
         }
-        if (bad.length) { log('  เลขแต่งไม่หาย ข้ามข่าวนี้'); continue; }
+        if (bad.length) { log('  เลขแต่งไม่หาย ข้ามข่าวนี้'); return null; }
         const anchor = c.anchor && fs.existsSync(c.anchor) ? c.anchor : this.defaultFace();
         if (anchor) spec.anchor = anchor;
         // มีคีย์ ElevenLabs = ข่าวอัตโนมัติใช้ Mali เสมอ (kidza ซื้อแล้ว 10 พ.ย. — ช่องเสียงในหน้าข่าวเคยเพี้ยนเป็น F5 แล้วพากย์ผิด)
@@ -160,10 +202,6 @@ class NewsAuto {
         this.cfg({ last: { at: new Date().toISOString(), dir, url: a.url }, recent: [...(this.cfg().recent || []), title(a)].slice(-30) });
         log('✅ รอบนี้เสร็จ');
         return { dir, title: title(a), posted };
-      }
-      log('ทำไม่ได้สักข่าวในรอบนี้');
-      return { skipped: 'all failed' };
-    } finally { this.running = false; this.setBusy(false); }
   }
 }
 

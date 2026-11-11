@@ -111,6 +111,7 @@ ipcMain.handle('shopee:show', (_e, url) => {
 // คิวงาน: มีงานรันอยู่ก็ต่อท้ายไว้ เสร็จ (หรือพัง) แล้วเริ่มอันถัดไปเอง · กดหยุด = หยุดงานนี้และล้างคิว
 // คิว + งานที่รันอยู่เซฟลงไฟล์: ปิดแอปกลางคันแล้วเปิดใหม่ = ทำต่อเอง (กดหยุด/เสร็จ/พัง = ไม่ทำต่อ)
 const QFILE = path.join(app.getPath('userData'), 'queue.json');
+const LASTFILM = path.join(app.getPath('userData'), 'lastfilm.json');
 const queue = [];
 let current = null;
 const saveQueue = () => fs.writeFileSync(QFILE, JSON.stringify({ current, queue }, null, 2));
@@ -127,6 +128,7 @@ function runJob({ opts, dir }, auto = false) {
     // โพสต์อัตโนมัติ: งานที่เลือก "ทำเสร็จแล้ว" เอง (คลิปขายของ) ชนะค่าในหน้าโพสต์ · no = เก็บไว้โพสต์เองทีหลัง
     if (ch === 'done' && opts.autopost !== 'no') poster.postProject(ROOT, dir, opts.autopost === 'yes').catch((e) => send('postlog', '❌ ' + e.message));
   };
+  if (opts.mode !== 'shopee' && !opts.remote) try { fs.writeFileSync(LASTFILM, JSON.stringify(opts)); } catch {} // มือถือสั่งหนังใช้ค่าเครื่องยนต์/เสียงชุดนี้
   job = new (opts.mode === 'shopee' ? ShopeePipeline : Pipeline)({ metaWin, renderPng, emit, flow, gate: newsGate });
   current = { opts, dir }; saveQueue();
   const resumed = fs.existsSync(path.join(dir, 'project.json'));
@@ -232,11 +234,15 @@ async function newsGate() {
 // รอข่าวรอบที่ทำอยู่จบก่อน · หนังทำต่อเองจากฉากล่าสุดที่เซฟไว้
 if (fs.existsSync(path.join(__dirname, '.git'))) {
   let t = null;
+  // Windows ยิง 'change' ตอนแอนตี้ไวรัส/ระบบแค่แตะไฟล์ด้วย (11 พ.ย. รีเองทั้งที่ไม่มีใครแก้) → ต้องมีไฟล์ที่เวลาแก้ไขใหม่กว่าตอนเปิดแอปจริงๆ
+  const bootAt = Date.now();
+  const edited = () => [__dirname, path.join(__dirname, 'ui')].some((d) => fs.readdirSync(d).some((f) => /\.(js|html|css)$/.test(f) && fs.statSync(path.join(d, f)).mtimeMs > bootAt));
   const kick = (_ev, f) => {
     if (!f || !/\.(js|html|css)$/.test(f)) return;
     clearTimeout(t);
     t = setTimeout(function again() {
-      if (newsBusy) { t = setTimeout(again, 30000); return; }
+      if (!edited()) return;
+      if (newsBusy || job) { t = setTimeout(again, 60000); return; } // รอหนัง/ข่าวที่ทำอยู่จบก่อน ไม่ทิ้งฉากที่เจนค้าง
       send('log', `🔄 โค้ดเปลี่ยน (${f}) รีสตาร์ทแอปเอง งานค้างจะทำต่ออัตโนมัติ`);
       app.quitting = true; app.relaunch(); app.exit(0);
     }, 8000);
@@ -249,6 +255,36 @@ app.whenReady().then(() => {
   const el = require('./eleven'), n = require('./notify');
   send('log', `🩺 เปิดแอป: userData=${app.getPath('userData')} · ElevenLabs=${el.key() ? 'มี' : 'ไม่มี (' + el.keyFile() + ': ' + el.lastErr() + ')'} · แจ้งเตือน=${n.hasToken() ? 'มี' : 'ไม่มี'} · ข่าวอัตโนมัติ=${newsAuto.cfg().on ? 'เปิด' : 'ปิด'} ${newsAuto.cfg().sites.length} เว็บ`);
 });
+// สั่งจากมือถือผ่าน Tailscale (remote.js + ui/mobile.html)
+app.whenReady().then(() => require('./remote').startRemote({
+  userData: app.getPath('userData'), root: ROOT, log: (m) => send('log', m),
+  state: () => {
+    const c = newsAuto.cfg(), p = jobState?.progress;
+    let log = [];
+    try { log = fs.readFileSync(LOGF, 'utf8').split('\n').filter(Boolean).slice(-25).map((l) => l.replace(/^\[[^\]]*?(\d+:\d+):\d+\] \w+: /, '$1 ')); } catch {}
+    return {
+      job: jobState && { title: jobState.title || readTitle(jobState.dir), idea: jobState.opts.idea, genre: jobState.opts.genre, paused: jobPaused,
+        progress: p && { label: `EP ${p.ep}/${p.eps} · ${p.label || ''} ${p.detail || ''}`.trim(), done: p.ep - 1, total: p.eps } },
+      queue: queue.map((q) => q.opts.idea || q.opts.genre), lastError, newsBusy, log,
+      auto: { on: c.on, everyH: c.everyH, start: c.start, end: c.end, sites: c.sites.length, platforms: c.platforms, last: c.last?.at },
+    };
+  },
+  clips: () => listClips(ROOT),
+  news: (url, post) => {
+    if (newsBusy) throw new Error('กำลังทำข่าวอีกอันอยู่ รอเสร็จก่อน');
+    newsAuto.fromUrl(url, post).then((r) => { newsLast = { dir: r.dir }; }, (e) => { newsAuto.log('❌ ข่าวจากมือถือ: ' + e.message); newsAuto.say('❌ ข่าวจากมือถือพัง: ' + e.message.slice(0, 200)); });
+  },
+  film: (o) => {
+    let base = { engine: 'comfy', voice: true, tts: 'f5', flowQuality: '720p' };
+    try { base = { ...base, ...JSON.parse(fs.readFileSync(LASTFILM, 'utf8')) }; } catch {}
+    const opts = { ...base, ...o, remote: true };
+    send('log', `📱 มือถือสั่งทำหนัง: ${o.genre} ${o.idea || ''}`);
+    if (job) { queue.push({ opts }); sendQueue(); return { queued: queue.length }; }
+    return { dir: runJob({ opts }, 'remote') };
+  },
+  auto: (on) => { newsAuto.cfg({ on }); newsAuto.log(`📱 มือถือ${on ? 'เปิด' : 'ปิด'}ข่าวอัตโนมัติ`); return { on }; },
+  stop: () => job && job.stop(),
+}));
 ipcMain.handle('newsauto:cfg', (_e, set) => newsAuto.cfg(set || undefined));
 ipcMain.handle('newsauto:run', () => newsAuto.round().catch((e) => { newsAuto.log('❌ ข่าวอัตโนมัติ: ' + e.message); return { error: e.message }; }));
 ipcMain.handle('post:logins', () => poster.openLogins().catch((e) => ({ error: e.message })));

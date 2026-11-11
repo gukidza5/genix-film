@@ -9,7 +9,7 @@
   st.style.cssText = 'display:block;margin:14px 12px 0;padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.5;text-decoration:none;color:inherit;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)';
   nav.after(st);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const HOW = { resume: '♻️ ทำต่อจากที่ค้างตอนปิดแอป', queue: '⏳ เริ่มเองจากคิว', continue: '▶ กดทำต่อ', new: '▶ กดเริ่มเอง' };
+  const HOW = { resume: '♻️ ทำต่อจากที่ค้างตอนปิดแอป', queue: '⏳ เริ่มเองจากคิว', continue: '▶ กดทำต่อ', new: '▶ กดเริ่มเอง', remote: '📱 สั่งจากมือถือ' };
   let S = { job: null, queue: [], lastError: null };
   function render() {
     const j = S.job, p = j?.progress;

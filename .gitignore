@@ -5,3 +5,4 @@ gemini.key
 *.bak*
 test-out-*/
 __pycache__/
+*.apk
