@@ -146,12 +146,12 @@ function put(file) {
  * generate({ kind: 'image'|'video', prompt, motion, image, wav, seconds, aspect, out, isStopped, log })
  * video + wav = ฉากพูด (S2V ปากขยับ, ยาวตามเสียง) · video ไม่มี wav = ฉากเงียบ (I2V)
  */
-async function generate({ kind, prompt, motion, image, refs = [], wav, seconds = 4, aspect = '9:16', out, isStopped, log }) {
+async function generate({ kind, prompt, motion, image, refs = [], style, wav, seconds = 4, aspect = '9:16', out, isStopped, log }) {
   await ensure(log);
   const [vw, vh, iw, ih] = SIZE[aspect] || SIZE['9:16'];
   let res;
   refs = refs.filter((f) => f && fs.existsSync(f));
-  if (kind === 'image' && refs.length && editReady()) res = await runGraph(editGraph(refs.map(put), prompt + '. Photorealistic film still. No text, no captions, no user interface, no livestream overlay, no watermark, no logo.', iw, ih, 'genix/edit'), isStopped); // เทสแรกโผล่กรอบไลฟ์สดปลอม
+  if (kind === 'image' && refs.length && editReady()) res = await runGraph(editGraph(refs.map(put), prompt + (style === 'cartoon' ? '. 3D animated cartoon style.' : '. Photorealistic film still.') + ' No text, no captions, no user interface, no livestream overlay, no watermark, no logo.', iw, ih, 'genix/edit'), isStopped); // เทสแรกโผล่กรอบไลฟ์สดปลอม
   else if (kind === 'image') res = await runGraph(imageGraph(prompt, iw, ih, 'genix/img'), isStopped);
   else if (wav) res = await runGraph(talkGraph(put(image), put(wav), motion || 'the person is talking, natural expression', vw, vh, framesFor(seconds), 'genix/talk'), isStopped);
   else res = await runGraph(videoGraph(put(image), motion, vw, vh, framesFor(seconds), 'genix/vid'), isStopped);

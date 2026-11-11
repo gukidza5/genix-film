@@ -66,7 +66,8 @@ function startRemote(d) {
       }
       if (u.pathname === '/api/film') return json(res, 200, await d.film({
         genre: String(b.genre || 'ดราม่าชีวิต'), idea: String(b.idea || '').slice(0, 500),
-        eps: Math.min(10, Math.max(1, +b.eps || 1)), scenes: Math.min(16, Math.max(2, +b.scenes || 12)),
+        eps: Math.min(20, Math.max(1, +b.eps || 1)), scenes: Math.min(24, Math.max(2, +b.scenes || 12)),
+        style: b.style === 'cartoon' ? 'cartoon' : '', // การ์ตูน 3D แทนภาพเหมือนจริง
         ...(['f5', 'edge', 'eleven'].includes(b.tts) ? { tts: b.tts } : {}), // บังคับเสียงฟรี/เสียตังได้จากข้างนอก
       }));
       if (u.pathname === '/api/auto') return json(res, 200, d.auto(!!b.on));

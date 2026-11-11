@@ -29,6 +29,9 @@ const hairOf = (look) => (look.match(/[^,]*(hair|bald|ponytail|bun|braid)[^,]*/i
 // ฉากมีบทพูด → ถ่ายคนพูดคนเดียว (ปากที่ขยับจะได้เป็นของคนพูดแน่ ๆ และไม่มีคนอื่นให้ลักษณะสลับ)
 // ฉากรวม → ย้ำทรงผม/เพศของแต่ละคนท้ายพรอมต์
 // มุมกล้องแบบละคร (8 พ.ย. เทียบกับไอละครจีน): ของเดิมทุกคนหันหน้าตรงกล้องเหมือนรูปติดบัตร → บังคับมุมเฉียง มองกันเอง ฉากหลังเบลอ
+// โหมดการ์ตูน: พรอมต์ทั้งหมดเขียนแบบหนังคนจริง → สลับคำเป็นแอนิเมชัน 3D ตอนส่งเข้า ComfyUI
+const toon = (s) => s.replace(/photo-?realistic,?\s*/gi, '').replace(/\bphoto\b/gi, 'image').replace(/(TV drama |cinematic )?film still/gi, 'animated movie frame')
+  + ', 3D animated cartoon style like a Pixar movie, stylized cartoon characters with big expressive eyes, soft colorful lighting';
 const FILM = 'three-quarter angle, eyes looking at the other person not at the camera, shallow depth of field with blurred background, soft cinematic lighting, TV drama film still';
 function framePrompt(s, spk, chars, locs = []) {
   if (s.line && spk) {
@@ -70,7 +73,8 @@ class Pipeline {
       // มีรูปตัวละคร + โมเดลแก้รูป → วางคนเดิมลงฉากใหม่ หน้าไม่เปลี่ยนทุกฉาก (Qwen-Image-Edit, comfy.js)
       const refs = (files || []).filter(Boolean), clean = prompt.replace(/^Imagine,?\s*/i, '');
       const pre = refs.length && comfy.editReady() ? `Create a new photo with the same ${refs.length > 1 ? 'people as in the reference pictures (picture 1, 2, 3 are different people)' : 'person as in the reference picture'}: keep exactly the same face, age, hairstyle and clothes. New scene: ` : '';
-      return this.comfyRun({ kind: 'image', prompt: pre + clean, refs, out });
+      const cartoon = this.p.style === 'cartoon';
+      return this.comfyRun({ kind: 'image', prompt: cartoon ? toon(pre + clean) : pre + clean, refs, out, style: this.p.style });
     }
     for (let i = 0; i < 2; i++) {
       try {
