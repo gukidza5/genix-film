@@ -185,7 +185,7 @@ class NewsAuto {
         const anchor = c.anchor && fs.existsSync(c.anchor) ? c.anchor : this.defaultFace();
         let spec, bad = [], tried = [];
         for (let k = 0; k < 3; k++) {
-          spec = await this.news.writeScript(this.metaWin(), a.text, tried, this.news.duoReady(anchor)); // มีหน้าชาย = ข่าวคู่ชายหญิง
+          spec = await this.news.writeScript(this.metaWin(), a.text, tried, false); // ผู้ประกาศหญิงคนเดียว (kidza 12 พ.ย. เลิกข่าวคู่)
           bad = badNumbers({ shots: [...spec.shots, { sub: (spec.caption || '').replace(/#\S+/g, '') }] }, a.text); // แคปชันโพสต์ด้วย (แฮชแท็กไม่นับ)
           if (!bad.length) break;
           tried = [...new Set([...tried, ...bad])];

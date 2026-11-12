@@ -16,7 +16,7 @@ const SCENES = {
   map: 'แผนที่ปักหมุด 4 จุด', money: 'ห้องข่าวโล่ง ใช้กับ card ตัวเลขใหญ่', personal: 'กระเป๋า+รถ+ตัวละคร (ใช้เงินผิดทาง) ใช้กับ card',
   freeze: 'บัญชีโดนล็อก 18 ใบ', court: 'ศาล + ตัวละครหญิงชาย', sorry: 'ตัวละครหญิงหน้าไมค์ (แถลง/ขอโทษ)', cta: 'มือถือ ? (ปิดท้ายถามคนดู)',
 };
-const EMO = ['ปกติ', 'โกรธ', 'โกรธแรง', 'ดีใจ', 'เศร้า', 'หงุดหงิด'];
+const EMO = ['ปกติ', 'ตกใจ', 'โกรธ', 'โกรธแรง', 'ดีใจ', 'เศร้า', 'หงุดหงิด'];
 
 function voices() {
   const list = [...(eleven.key() ? eleven.VOICES.map((v) => ({ id: 'eleven:' + v.id, name: v.name })) : []), { id: 'edge', name: 'Niwat (edge-tts ชาย)' }];
@@ -34,13 +34,13 @@ async function writeScript(metaWin, text, bad = [], duo = false) {
   const redo = bad.length ? `\nสำคัญ: รอบก่อนบทมีตัวเลข ${bad.join(', ')} ซึ่งไม่มีอยู่ในเนื้อข่าว ห้ามใช้ตัวเลขพวกนี้อีก ให้ตัดออก หรือใช้เฉพาะตัวเลขที่เขียนอยู่ในเนื้อข่าวจริง ๆ (ห้ามแปลงปี ห้ามคำนวณเลขใหม่)` : '';
   const vel = duo
     ? `vo_el=คำพูดของผู้ประกาศตาม who เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล พูดแบบผู้ประกาศข่าวทีวีชายหญิงคุยส่งต่อกันในรายการข่าวเช้า มีรับลูกกันบ้าง (เช่น "ใช่ค่ะ" "เรื่องนี้ต้องติดตามนะครับ" ถามอีกคนสั้นๆ) ผู้ชายลงท้ายครับ ผู้หญิงลงท้ายค่ะ แต่ไม่ต้องทุกประโยค ห้ามเรียกชื่อกัน ห้ามใช้ แก/อะ/จริงดิ ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยม ช็อตละ 0–1 แท็ก เลือกจาก [serious] [surprised] [curious] [sighs] [laughs]`
-    : `vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล แต่เล่าแบบผู้หญิงเม้าท์ข่าวกับเพื่อนสาว (แก / อะ / เลยนะ / จริงดิ) ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมตรงจุดสำคัญ ช็อตละ 1–2 แท็ก เลือกจาก [excited] [whispers] [surprised] [laughs] [serious] [sighs]`;
+    : `vo_el=เนื้อหาเดียวกับ vo ข้อเท็จจริงเดิมทุกตัว ห้ามเพิ่มข้อมูล อ่านแบบผู้ประกาศข่าวหญิงทีวี (kidza 12 พ.ย.) ลงท้ายค่ะบ้างไม่ต้องทุกประโยค ห้ามใช้ แก/อะ/จริงดิ · ใส่อารมณ์ตามเนื้อข่าวแต่ละช่วง: เหตุร้าย/อุบัติเหตุ/ความรุนแรง = ตกใจ เสียงเน้น, เรื่องน่าโมโห/เอาเปรียบ = เข้ม หนักแน่น, สูญเสีย/น่าสงสาร = เศร้า เสียงอ่อนลง, เรื่องดี = สดใส · ใส่แท็กอารมณ์ภาษาอังกฤษในวงเล็บเหลี่ยมนำหน้าประโยคตามนั้น ช็อตละ 1–2 แท็ก เลือกจาก [surprised] [serious] [angry] [sad] [excited] [sighs]`;
   const who = duo ? `who="m" (ผู้ประกาศชาย) หรือ "f" (ผู้ประกาศหญิง) สลับกันเป็นธรรมชาติ คนเดียวพูดติดกันไม่เกิน 2 ช็อต ช็อตแรก f ทักคนดูสั้นๆ แล้วเข้าข่าว ช็อตสุดท้ายใครก็ได้ · ` : '';
   const spec = await ask(metaWin, `คุณคือคนเขียนบทคลิปสรุปข่าวแนวตั้ง 30–40 วินาที (คลิปสั้นคนดูจนจบ ระบบดันมากกว่า — kidza 12 พ.ย.) ภาษาไทย อ่านแล้วตื่นเต้นแบบข่าว
 กฎเหล็ก: ใช้เฉพาะข้อเท็จจริง ตัวเลข วันที่ ที่อยู่ในเนื้อข่าวด้านล่างเท่านั้น ห้ามเดาหรือเติมเอง ห้ามเติมปีถ้าข่าวไม่ได้เขียนปี ห้ามคำนวณตัวเลขใหม่ (บวก ลบ แปลงหน่วย) ·${redo} คนที่ยังไม่มีคำพิพากษาให้เรียก "ผู้ต้องหา"/"ถูกกล่าวหา" และใช้ "ตำรวจแถลงว่า" กับตัวเลขของตำรวจ · ภาษาสุภาพ ไม่ใช้ กู/มึง
 ทำ 5–6 ช็อต แต่ละช็อตเลือก scene จาก: ${Object.entries(SCENES).map(([k, v]) => `${k}=${v}`).join(' | ')}
 ช่อง: cap=ซับบนจอของช็อตนี้ เนื้อเดียวกับที่พูด เขียนแบบอ่านง่าย ตัวเลขเป็นเลขอารบิก ไม่มีแท็ก ≤ 70 ตัวอักษร · hook (ระดับบนสุด)=พาดหัวตัวใหญ่ 3 วิแรก ≤ 28 ตัวอักษร ทำให้คนหยุดไถ (ข้อเท็จจริงในข่าวเท่านั้น) · head=หัวข้อบนจอสั้นๆ (ใช้ <b>คำ</b> ไฮไลต์เหลือง, <br> ขึ้นบรรทัด) · sub=ซับล่างสั้นๆ · tag=วันที่ (ถ้ามี) · chips=รายการสั้น 2–4 อัน (ถ้ามี) · card=[ป้าย, ตัวเลข, หน่วย] (ถ้าเป็นช็อตตัวเลข)
-${who}ตัวย่อทุกตัวใน vo/vo_el/vo_f5 ให้เขียนเป็นเสียงอ่านทีละตัวอักษรตามที่คนไทยอ่านจริง คั่นด้วยขีด เช่น ธ.ก.ส.→ทอ-กอ-สอ (ธ อ่าน ทอ ไม่ใช่ ธอ) ป.ป.ช.→ปอ-ปอ-ชอ ส.ส.→สอ-สอ ก.ล.ต.→กอ-ลอ-ตอ ครั้งแรกที่พูดถึงหน่วยงานใช้ชื่อเต็มได้ถ้าไม่ยาวเกิน · vo=คำพูดพากย์ ≤ 90 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · ${vel} เขียนติดกันแบบภาษาพูดปกติ เว้นวรรคเฉพาะระหว่างวลี ห้ามเว้นวรรคทุกคำ (เน้นได้แค่ตัวเลขสำคัญ 1 จุด เช่น "ไม่เกิน ห้า เซนติเมตร") ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} (ส่วนใหญ่ "โกรธ" ให้มีพลัง ตัวเลขช็อก "โกรธแรง" ข้อสงวนทางกฎหมาย "ปกติ")
+${who}ตัวย่อทุกตัวใน vo/vo_el/vo_f5 ให้เขียนเป็นเสียงอ่านทีละตัวอักษรตามที่คนไทยอ่านจริง คั่นด้วยขีด เช่น ธ.ก.ส.→ทอ-กอ-สอ (ธ อ่าน ทอ ไม่ใช่ ธอ) ป.ป.ช.→ปอ-ปอ-ชอ ส.ส.→สอ-สอ ก.ล.ต.→กอ-ลอ-ตอ ครั้งแรกที่พูดถึงหน่วยงานใช้ชื่อเต็มได้ถ้าไม่ยาวเกิน · vo=คำพูดพากย์ ≤ 90 ตัวอักษร เขียนตัวเลขเป็นคำอ่าน · ${vel} เขียนติดกันแบบภาษาพูดปกติ เว้นวรรคเฉพาะระหว่างวลี ห้ามเว้นวรรคทุกคำ (เน้นได้แค่ตัวเลขสำคัญ 1 จุด เช่น "ไม่เกิน ห้า เซนติเมตร") ≤ 130 ตัวอักษร · vo_f5=เหมือน vo แต่สะกดตัวย่อเป็นเสียงอ่าน (ปอศ.→ปอสอ, พ.ร.บ.→พอรอบอ) · emo=${EMO.join('/')} เลือกตามเนื้อหาช็อตนั้น (เหตุร้าย/เรื่องช็อก "ตกใจ" · น่าโมโห "โกรธ" · ตัวเลขช็อก "โกรธแรง" · สูญเสีย "เศร้า" · ข่าวดี "ดีใจ" · ข้อสงวนทางกฎหมาย "ปกติ") ใช้ทั้งเสียงและสีหน้าผู้ประกาศ
 img=ภาษาอังกฤษ บรรยายภาพถ่ายของช็อตนี้ (สถานที่ คน การกระทำ อารมณ์ มุมกล้อง) คนในภาพเป็นคนไทยทั่วไปไม่เหมือนคนจริง ห้ามมีตัวหนังสือในภาพ
 person (ระดับบนสุด)=ชื่อคนดังที่เป็นตัวหลักของข่าว เฉพาะคนที่คนทั้งประเทศรู้จัก (ดารา นักร้อง อินฟลูดัง นักการเมือง นักกีฬา) เขียนแบบที่ค้นรูปเจอ เช่น "ชื่อเล่น ชื่อจริง นามสกุล" · ข่าวคนธรรมดา/ผู้ต้องหาทั่วไป/ไม่แน่ใจว่าดัง ใส่ "" · sfx เลือกจาก impact_big/whoosh_cine/whoosh_fast/popclick/bass_hit/hit_drum หรือ null · ช็อตแรกเปิดด้วยประโยคที่ทำให้อยากดูต่อ ช็อตสุดท้าย scene=cta ถามคนดูให้คอมเมนต์
 ตอบเป็น JSON อย่างเดียว คั่นด้วย GENIX_START ... GENIX_END:
@@ -175,7 +175,7 @@ async function animeScenes(dir, spec, log) {
 // ผู้ประกาศปากขยับ (MuseTalk) วงกลมมุมขวาบน · ไม่มี MuseTalk/การ์ดจอไม่ว่าง = ใช้รูปนิ่งในวงกลมแทน
 // face2 = ผู้ประกาศชาย (ข่าวคู่): กรอบซ้าย ปากขยับตาม vo_track_m.wav · หญิงกรอบขวาตาม vo_track_f.wav (build.py แยกให้)
 // vo = ไฟล์เสียงแต่ละช็อต (หลัง build.py ตัดเงียบแล้ว) · who = 'm'/'f' ต่อช็อต (ข่าวคู่)
-async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], who: by = [] }) {
+async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], who: by = [], emo = [] }) {
   const sq = "crop=w='min(iw,ih)*0.8':h='min(iw,ih)*0.8':x='(iw-ow)/2':y=0,scale=512:512";
   const duo = face2 && fs.existsSync(path.join(dir, 'tmp', 'vo_track_m.wav')) && fs.existsSync(path.join(dir, 'tmp', 'vo_track_f.wav'));
   const who = duo ? [{ face: face2, track: 'vo_track_m.wav', left: true, w: 'm' }, { face, track: 'vo_track_f.wav', w: 'f' }] : [{ face, track: 'vo_track.wav' }];
@@ -190,7 +190,7 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], wh
       if (!vo.length) break;
       try {
         log(`👄 ผู้ประกาศ${duo ? (a.left ? 'ชาย' : 'หญิง') : ''}พูด (Wan S2V ช็อตละ ~2–3 นาที)`);
-        talks[i] = await s2vTrack(dir, a.face, vo.map((f, k) => ({ wav: f, len: lens[k], at: starts[k] + 0.15, mine: !duo || (by[k] || 'f') === a.w })), total, sq, log, `a${i}`);
+        talks[i] = await s2vTrack(dir, a.face, vo.map((f, k) => ({ wav: f, len: lens[k], at: starts[k] + 0.15, emo: emo[k], mine: !duo || (by[k] || 'f') === a.w })), total, sq, log, `a${i}`);
       } catch (e) { log('⚠️ S2V ไม่ได้ ใช้ MuseTalk แทน: ' + e.message.slice(0, 150)); }
     }
     await comfy.free();
@@ -235,6 +235,13 @@ async function addAnchor(dir, face, src, out, { log, gpuBusy, face2, vo = [], wh
 }
 
 // ผู้ประกาศ 1 คนตลอดคลิป: ท่านั่งเฉยวนลูปเป็นพื้น แปะคลิปพูดจาก S2V ตรงเวลาที่ตัวเองพูด (ครอปแบบเดียวกับท่าเฉย ภาพไม่กระโดด)
+// สีหน้าผู้ประกาศตาม emo ของช็อต (kidza 12 พ.ย.: ข่าวตกใจก็ทำหน้าตกใจ)
+const FACE = {
+  ตกใจ: 'surprised shocked expression, eyebrows raised, eyes widen on key words',
+  โกรธ: 'serious stern expression, slight frown, firm emphatic delivery', โกรธแรง: 'very serious stern expression, frown, strong emphatic delivery',
+  หงุดหงิด: 'displeased serious expression, slight frown', เศร้า: 'sad sympathetic expression, softer eyes, slight head tilt',
+  ดีใจ: 'warm smile, bright upbeat expression', ปกติ: 'calm professional expression',
+};
 async function s2vTrack(dir, face, shots, total, sq, log, tag) {
   const idle = await idleClip(face, sq, log);
   const parts = [];
@@ -242,7 +249,7 @@ async function s2vTrack(dir, face, shots, total, sq, log, tag) {
     if (!s.mine) continue;
     const f = path.join(dir, 'tmp', `talk_${tag}_${k}.mp4`);
     if (!fs.existsSync(f)) await comfy.generate({ kind: 'video', image: face, wav: s.wav, seconds: s.len, aspect: '1:1', out: f, log,
-      motion: 'A TV news anchor talking to the camera, natural lip movement matching the speech, subtle head movement and natural blinking, calm professional friendly expression, static camera, same framing' });
+      motion: `A female TV news anchor reading the news to the camera, natural lip movement matching the speech, subtle head movement and natural blinking, ${FACE[s.emo] || FACE['ปกติ']}, static camera, same framing` });
     parts.push({ f, at: s.at, len: await duration(f) });
   }
   const res = path.join(dir, 'tmp', `anchor_${tag}.mp4`);
@@ -415,7 +422,7 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
   const built = path.join(dir, sub ? `out_${sub}.mp4` : 'out.mp4');
   if (spec.anchor && fs.existsSync(spec.anchor)) { // ผู้ประกาศมุมขวาล่างทุกแบบ (kidza 10 พ.ย. ขอคืนหลังเปลี่ยนเป็นแบบรูปเต็มจอ)
     try { await addAnchor(dir, spec.anchor, built, path.join(dir, 'output', 'ข่าว.mp4'), { log, gpuBusy, face2: duo ? maleFace(spec.anchor) : null,
-      vo: spec.shots.map((_, k) => (sub ? path.join(dir, sub, `vo${k}.wav`) : path.join(dir, 'tmp', `vo${k}.mp3`))), who: spec.shots.map((s) => s.who) }); }
+      vo: spec.shots.map((_, k) => (sub ? path.join(dir, sub, `vo${k}.wav`) : path.join(dir, 'tmp', `vo${k}.mp3`))), who: spec.shots.map((s) => s.who), emo: spec.shots.map((s) => s.emo) }); }
     catch (e) { log('⚠️ ใส่ผู้ประกาศไม่ได้: ' + e.message.slice(0, 200)); fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4')); }
   } else fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4'));
   fs.writeFileSync(path.join(dir, 'output', 'ข่าว_post.txt'), spec.caption || `${spec.title}\n\n#สรุปข่าว #ข่าววันนี้\nที่มา: ${spec.source || ''}`);
