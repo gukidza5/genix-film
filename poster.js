@@ -197,27 +197,19 @@ async function finish(page, re, what, dryRun) {
   return 'ok';
 }
 
-// เฟสพาร์ทเนอร์แอฟฟิลิเอต (Shopee เชื่อมแล้ว 12 พ.ย.): แนบลิงก์เป็นแบนเนอร์สินค้าในหน้าแก้ไข Reels
-// shortcut: ยังไม่เคยเห็นหน้าจริง เดาปุ่มจากข้อความ ถ้าหาไม่เจอ/พัง คืน false ให้แปะลิงก์ท้ายแคปชันแทน — เทสโหมดทดลองแล้วแก้ regex ตรงนี้
+// เฟสพาร์ทเนอร์แอฟฟิลิเอต: หน้า "การตั้งค่า" (หน้าที่มีปุ่มโพสต์) มีแถว "เพิ่มสินค้า — ใส่ลิงก์ไปยังสินค้าแอฟฟิลิเอต…" (แคปจอ kidza 12 พ.ย.)
+// กดแถวนั้น → วางลิงก์ย่อ s.shopee → ยืนยัน · shortcut: หน้าต่างหลังกดยังไม่เคยเห็น เดาช่อง/ปุ่มยืนยัน ถ้าพังแก้ตรงนี้
 async function fbAffiliate(page, link, log) {
   const vis = page.locator(':visible');
-  try {
-    const btn = page.getByRole('button', { name: /ลิงก์ผลิตภัณฑ์|ลิงก์สินค้า|ลิงก์แอฟฟิลิเอต|แท็กผลิตภัณฑ์|เพิ่มผลิตภัณฑ์|Product link|Affiliate link|Add product|Tag product/i }).and(vis).first();
-    await btn.click({ timeout: 6000 });
-    const dlg = page.locator('[role=dialog]').and(vis).last();
-    const input = dlg.locator('input[type=text], input[type=url], input:not([type]), textarea, [contenteditable=true]').and(vis).first();
-    await input.click({ timeout: 8000 });
-    await input.fill(link).catch(() => page.keyboard.insertText(link));
-    await sleep(2500); // เฟสดึงรายละเอียดสินค้าจากลิงก์
-    await dlg.getByRole('button', { name: /^(เพิ่ม|บันทึก|เสร็จสิ้น|ยืนยัน|ถัดไป|Add|Save|Done|Confirm|Next)$/i }).and(vis).last().click({ timeout: 8000 });
-    await sleep(2000);
-    log('🛒 Facebook: แนบแบนเนอร์สินค้าแอฟฟิลิเอตแล้ว');
-    return true;
-  } catch (e) {
-    await page.keyboard.press('Escape').catch(() => {});
-    log(`ℹ️ Facebook: แนบแบนเนอร์สินค้าไม่ได้ (${e.message.split(/\r?\n/)[0].slice(0, 80)}) — แปะลิงก์ท้ายแคปชันแทน`);
-    return false;
-  }
+  await page.getByText(/^(เพิ่มสินค้า|Add products?)$/i).and(vis).first().click({ timeout: 15000 });
+  const dlg = page.locator('[role=dialog]').and(vis).last();
+  const input = dlg.locator('input[type=text], input[type=url], input:not([type]), textarea, [contenteditable=true]').and(vis).first();
+  await input.click({ timeout: 10000 });
+  await input.fill(link).catch(() => page.keyboard.insertText(link));
+  await sleep(3000); // เฟสดึงรูป/ชื่อสินค้าจากลิงก์
+  await dlg.getByRole('button', { name: /^(เพิ่ม|บันทึก|เสร็จสิ้น|เสร็จ|ยืนยัน|ใช้|Add|Save|Done|Confirm|Apply)$/i }).and(vis).last().click({ timeout: 10000 });
+  await sleep(2500);
+  log('🛒 Facebook: เพิ่มสินค้าแอฟฟิลิเอตแล้ว ' + link);
 }
 
 const DRIVERS = {
@@ -297,13 +289,12 @@ const DRIVERS = {
       throw new Error(`รอ${what}นานเกิน 2 นาที (หน้าเฟสเปลี่ยน?)`);
     };
     await until(box, 'ช่องแคปชัน');
-    const banner = clip.link && (await fbAffiliate(page, clip.link, log));
-    const text = clip.link && !banner ? `${clip.caption}
-
-🛒 สั่งซื้อ: ${clip.link}` : clip.caption;
+    const text = clip.caption; // ลิงก์ไปใส่ที่ "เพิ่มสินค้า" หน้าตั้งค่า ไม่ต่อท้ายแคปชัน
     await typeInto(page, box, text);
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
+    // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
+    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => { throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 120)); });
     return finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
   },
 

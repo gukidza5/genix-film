@@ -95,7 +95,8 @@ async function fetchProduct() {
     const r = await genix.product(url);
     if (r.needLogin) { log(`⚠️ ${SHOPNAME} ให้ล็อกอิน/ยืนยันตัว — ล็อกอินในหน้าต่างที่เปิดขึ้นแล้วกดดึงข้อมูลใหม่`); return genix.showShopee(url); }
     if (r.error) return log('⚠️ ' + r.error);
-    product = { url: r.url || url, image: r.image, desc: r.desc };
+    // ลิงก์ย่อ s.shopee (แอฟฟิลิเอต) เก็บตามที่แปะ: เฟส "เพิ่มสินค้า" ใช้ลิงก์นี้ ลิงก์ปลายทางยาวใช้ไม่ได้ (kidza 12 พ.ย.)
+    product = { url: /^https?:\/\/s\.shopee\./i.test(url) ? url : r.url || url, page: r.url, image: r.image, desc: r.desc };
     $('title').value = r.title; $('price').value = r.price || '';
     setPic(r.image);
     log(`🛒 ${r.title} ${r.price || ''}`);
