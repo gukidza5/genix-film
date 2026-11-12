@@ -12,6 +12,7 @@ app.whenReady().then(async () => {
   await cap.loadFile(path.join(__dirname, '..', 'ui', 'caption.html'));
   const renderPng = async (spec) => Buffer.from((await cap.webContents.executeJavaScript(`render(${JSON.stringify(spec)})`)).split(',')[1], 'base64');
   const { Pipeline } = require('../pipeline');
+  const Shopee = require('../shopee').ShopeePipeline; // คลิปขายของ (mode shopee) ใช้คนละคลาส
   const emit = (ch, d) => {
     if (ch === 'log') log(d);
     else if (ch === 'progress') log(`EP${d.ep}/${d.eps} ${d.label || ''} ${d.detail || ''}`);
@@ -19,7 +20,7 @@ app.whenReady().then(async () => {
   };
   const opts = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
   try {
-    await new Pipeline({ metaWin: null, renderPng, emit, flow: null, gate: null }).start(dir, opts);
+    await new (opts.mode === 'shopee' ? Shopee : Pipeline)({ metaWin: null, renderPng, emit, flow: null, gate: null }).start(dir, opts);
     log('DONE');
   } catch (e) { log('❌ ' + (e.stack || e.message)); process.exitCode = 1; }
   app.quit();

@@ -6,6 +6,23 @@ const { BrowserWindow, session } = require('electron');
 const { Pipeline, run, dur } = require('./pipeline');
 const { geminiImage } = require('./meta');
 
+// พากย์ 1 ประโยคด้วย F5 ในเครื่อง (ตัวสำรองตอน edge-tts ล่ม) เสียงหญิง = serหญิง005 (kidza เลือก 12 พ.ย.) · ไม่มี F5 → false
+async function f5Say(text, mp3, gender) {
+  const { VO } = require('./paths');
+  const py = path.join(VO, 'venv/Scripts/python.exe'), tts = path.join(VO, 'genix_tts.py');
+  if (!fs.existsSync(tts)) return false;
+  const voices = JSON.parse(fs.readFileSync(path.join(VO, 'refs/voices.json'), 'utf8').replace(/^﻿/, ''));
+  const v = voices.find((x) => x.id === (gender === 'male' ? 'serชาย001' : 'serหญิง005')) || voices.find((x) => x.gender === gender);
+  if (!v) return false;
+  const r = v.emo?.['ปกติ'] || v, wav = mp3.replace(/\.mp3$/, '.f5.wav'), job = mp3.replace(/\.mp3$/, '.f5job.json');
+  fs.writeFileSync(job, JSON.stringify({ items: [{ ref: r.ref, ref_text: r.ref_text, text, out: wav }] }));
+  await require('./comfy').free();
+  await run(py, [tts, job]).catch(() => {});
+  if (!fs.existsSync(wav)) return false;
+  await run('ffmpeg', ['-y', '-v', 'error', '-i', wav, '-b:a', '128k', mp3]);
+  return fs.statSync(mp3).size > 1000;
+}
+
 const STAGES = ['เตรียมสินค้า', 'เขียนบท', 'สร้างภาพ', 'สร้างวิดีโอ', 'ตัดต่อ'];
 const SIZE = { '9:16': [1080, 1920], '4:5': [1080, 1350], '1:1': [1080, 1080], '16:9': [1920, 1080] };
 const VOICE = { female: 'th-TH-PremwadeeNeural', male: 'th-TH-NiwatNeural' };
@@ -221,10 +238,15 @@ class ShopeePipeline extends Pipeline {
       let audio = null, len = 3.5;
       if (p.voice !== 'none' && s.line) {
         audio = this.f(`clip${n}`, 'cut', `${tag}.mp3`);
-        for (let k = 0; k < 3; k++) {
-          try { await run('python', ['-m', 'edge_tts', '--voice', VOICE[p.voicetype] || VOICE.female, '--rate=+12%', '--text', s.line, '--write-media', audio]); break; }
-          catch (e) { if (k === 2) { this.log(`⚠️ พากย์ฉาก ${i + 1} ไม่ได้: ${e.message.slice(-120)}`); audio = null; } else await new Promise((r) => setTimeout(r, 2000)); }
+        // เสียงหญิง Premwadee ฝั่ง Microsoft ตอบ NoAudioReceived แบบสุ่ม (12 พ.ย. พังติดกันทั้งชั่วโมง ฉากเงียบ) → ลอง 6 รอบ ไม่ได้ใช้ F5 เสียงหญิงในเครื่อง
+        let ok = false;
+        for (let k = 0; k < 6 && !ok; k++) {
+          try { await run('python', ['-m', 'edge_tts', '--voice', VOICE[p.voicetype] || VOICE.female, '--rate=+12%', '--text', s.line, '--write-media', audio]); ok = fs.statSync(audio).size > 1000; }
+          catch {}
+          if (!ok) await new Promise((r) => setTimeout(r, 2000 + k * 1500));
         }
+        if (!ok) ok = await f5Say(s.line, audio, p.voicetype === 'male' ? 'male' : 'female').catch(() => false);
+        if (!ok) { this.log(`⚠️ พากย์ฉาก ${i + 1} ไม่ได้ (edge-tts และ F5)`); fs.rmSync(audio, { force: true }); audio = null; }
         if (audio) len = Math.max(len, (await dur(audio)) + 0.4);
       }
       const cap = this.f(`clip${n}`, 'cut', `${tag}.png`);
