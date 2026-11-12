@@ -141,7 +141,7 @@ class Pipeline {
   // พากย์ทั้ง EP รอบเดียว (โหลดโมเดลครั้งเดียว) ลงไฟล์ s{n}.mp3 ที่ voice() ใช้ · บรรทัดไหนพังจะตกไปใช้ edge-tts เอง
   async voiceAll(ep, E) {
     if (!this.p.voice || this.p.tts !== 'f5' || !fs.existsSync(F5.py)) return;
-    const voices = JSON.parse(fs.readFileSync(F5.voices, 'utf8').replace(/^FEFF/, ''));
+    const voices = JSON.parse(fs.readFileSync(F5.voices, 'utf8').replace(/^﻿/, '')); // ไฟล์ที่ PowerShell เขียนมี BOM (MM 12 พ.ย.)
     const chars = this.p.cast.characters;
     for (const c of chars) {
       if (c.f5) continue; // จำเสียงไว้ในโปรเจกต์ ทุก EP ได้เสียงเดิม
