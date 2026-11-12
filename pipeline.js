@@ -247,8 +247,9 @@ class Pipeline {
       this.check();
 
       // 4 บท
-      if (!E.scenes) {
-        this.step(ep, 3, `เขียนบท EP.${ep}`);
+      // Gemini บางทีตอบ JSON ผิดรูป (ไม่มี scenes / ส่งมาเป็น array เปล่า ๆ) → ขอใหม่ 3 รอบ (ลุงตู่ EP5 พัง 12 พ.ย.)
+      for (let t = 0; t < 3 && !E.scenes?.length; t++) {
+        this.step(ep, 3, `เขียนบท EP.${ep}${t ? ` (ลองใหม่ ${t + 1})` : ''}`);
         const r = await this.ask(
           `เขียนบทถ่ายทำซีรีส์ "${p.title}" ตอนที่ ${ep}/${p.eps} (${(p.plot.episodes || [])[ep - 1] || p.plot.logline}) จำนวน ${p.scenes} ฉาก
 ${p.episodes[ep - 2]?.scenes ? `ตอนก่อนหน้าจบที่: ${p.episodes[ep - 2].scenes.at(-1).action} — เริ่มตอนนี้ต่อจากตรงนั้น\n` : ''}ตัวละคร:\n${looks}\nโลเคชัน: ${p.cast.locations.map((l) => `${l.name} = ${l.look}`).join('; ')}
@@ -259,9 +260,12 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
 - image_prompt ห้ามให้ใครมองกล้องหรือยืนเรียงหน้าตรง ใช้มุมเฉียง 3/4 ข้ามไหล่ หรือสองคนหันหน้าเข้าหากัน ฉากหลังเบลอ
 - motion ต้องมีการแสดงเจาะจง 1-2 อย่างที่เห็นชัด เช่น glances sideways then frowns / covers mouth and giggles / presses hand to chest in shock / turns head to look at him / eyes widen, lips part / sighs and looks down พร้อมกล้อง slow push-in หรือ subtle handheld ห้ามเขียนกว้าง ๆ แค่ "talking" หรือ "standing"
 รูปแบบ: {"ep_title":"ชื่อตอน","scenes":[{"speaker":"ชื่อตัวละครที่พูด","listener":"ชื่อคนฟัง","line":"บทพูด","emotion":"ปกติ","action":"เกิดอะไรขึ้น (ไทย)","image_prompt":"english","setting":"english background/location only, no people","motion":"english acting + camera"}]}`, 'json', 240000);
-        Object.assign(E, { title: r.ep_title, scenes: r.scenes });
+        const sc = (Array.isArray(r) ? r : r?.scenes || Object.values(r || {}).find(Array.isArray) || []).filter((x) => x?.image_prompt);
+        if (!sc.length) { this.log(`⚠️ บท EP.${ep} ไม่มีฉาก ขอใหม่`); continue; }
+        Object.assign(E, { title: r?.ep_title || E.title, scenes: sc });
         this.save();
       }
+      if (!E.scenes?.length) throw new Error(`เขียนบท EP.${ep} ไม่ได้ 3 รอบ`);
 
       // 5 เฟรม
       for (const [i, s] of E.scenes.entries()) {
