@@ -168,8 +168,8 @@ class ShopeePipeline extends Pipeline {
       C.final = await this.edit(n, C);
       C.cover = await this.coverShot(n, C);
       C.post = this.f('output', `clip${n}_post.txt`);
-      // ไม่ต่อลิงก์ท้ายแคปชันแล้ว: เฟสใส่ลิงก์ย่อที่ "เพิ่มสินค้า" (poster.js) ลิงก์อยู่ช่องลิงก์แอฟฟิลิเอตในหน้าโพสต์
-      fs.writeFileSync(C.post, [C.caption || '', (C.hashtags || []).join(' ')].join('\n'));
+      // ลิงก์ Shopee ย่อท้ายแคปชันด้วย (kidza 12 พ.ย.) + เฟสใส่ซ้ำที่ "เพิ่มสินค้า" (poster.js) · TikTok ปักตะกร้าแทน ไม่ใส่
+      fs.writeFileSync(C.post, [C.caption || '', (C.hashtags || []).join(' '), p.product.url && p.shop !== 'tiktok' ? `\n🛒 ${p.product.url}` : ''].join('\n').trim());
       this.save();
       this.emit('asset', { kind: 'final', file: C.final, cover: C.cover, name: `คลิป ${n}: ${C.scenes[0]?.overlay || ''}` });
       this.log(`✅ คลิป ${n} เสร็จ: ${C.final}`);
