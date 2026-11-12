@@ -33,11 +33,17 @@ for k, s in enumerate(spec['shots']):
     n = int(dd * 30)
     seg = os.path.join(tmp, f'seg{k}.mp4')
     if spec.get('style') == 'photo':
-        # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต ไม่มีตัวหนังสือ · เฟดดำแค่ต้น/ท้ายคลิป ระหว่างช็อตละลายต่อกัน (ข้างล่าง)
+        # แบบรูปจริง: ซูมเข้า/ออกสลับช็อต + พาดหัว/ซับ (txt_k.png) · เฟดดำแค่ท้ายคลิป ระหว่างช็อตละลายต่อกัน (ข้างล่าง)
         z = f"1+0.08*on/{n}" if k % 2 == 0 else f"1.08-0.08*on/{n}"
-        fades = (',fade=in:st=0:d=0.3' if k == 0 else '') + (f',fade=out:st={dd - 0.4:.3f}:d=0.4' if k == N - 1 else '')
+        # ไม่เฟดเข้าจากดำ: เฟรมแรกเป็นภาพปกเวลาแพลตฟอร์มหยิบไปโชว์ (12 พ.ย. ปกดำ)
+        fades = f',fade=out:st={dd - 0.4:.3f}:d=0.4' if k == N - 1 else ''
         fc = f"[0]scale=3564:6336,zoompan=z='{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30{fades}"
         ins_ = ['-loop', '1', '-i', os.path.join(job, 'shots', f'bg_{k}.png')]
+        txt = os.path.join(job, 'shots', f'txt_{k}.png')
+        if os.path.exists(txt):  # พาดหัว (ช็อตแรก) + ซับ — นิ่ง ไม่ซูมตามรูป อ่านง่าย
+            fc = fc + '[bg];[1]format=rgba[fg];[bg][fg]overlay=0:0' + (f',fade=out:st={dd - 0.4:.3f}:d=0.4' if k == N - 1 else '')
+            fc = fc.replace(fades + '[bg]', '[bg]', 1) if fades else fc
+            ins_ += ['-loop', '1', '-i', txt]
     else:
         # ฉากซูมเข้าช้าๆ, ตัวหนังสือเฟดเข้า+เลื่อนขึ้นนิดๆ
         fc = (f"[0]scale=3564:6336,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=1080x1920:fps=30[bg];"
