@@ -133,8 +133,8 @@ class Poster {
   // โพสต์อัตโนมัติหลังทำเรื่องเสร็จ: ทุกคลิปของโปรเจกต์ที่ยังไม่เคยโพสต์
   async postProject(root, dir, force) {
     if (!force && !this.settings().autopost) return;
-    // คลิปขายของ TikTok → ขึ้น TikTok อย่างเดียวพร้อมปักตะกร้า (ไม่สนช่องติ๊กแพลตฟอร์มในหน้าโพสต์)
-    for (const c of listClips(root).filter((x) => x.dir === dir)) await this.post(c, c.shop === 'tiktok' ? ['tiktok'] : undefined);
+    // คลิปขายของ TikTok → ขึ้น TikTok อย่างเดียวพร้อมปักตะกร้า · Facebook → ขึ้น Reels อย่างเดียว + เพิ่มสินค้า (ไม่สนช่องติ๊กแพลตฟอร์มในหน้าโพสต์)
+    for (const c of listClips(root).filter((x) => x.dir === dir)) await this.post(c, c.shop === 'tiktok' ? ['tiktok'] : c.shop === 'facebook' ? ['facebook'] : undefined);
   }
 }
 

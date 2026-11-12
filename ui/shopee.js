@@ -4,10 +4,20 @@ const OPTS = ['presence', 'style', 'scene', 'aspect', 'tone', 'register', 'accen
 const fileUrl = (p) => 'file:///' + p.replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/').replace('%3A', ':');
 
 let running = false, t0 = 0, product = {};
-// หน้าเดียวใช้ 2 ร้าน: shopee.html (Shopee) / shopee.html?shop=tiktok (TikTok Shop)
-const SHOP = new URLSearchParams(location.search).get('shop') === 'tiktok' ? 'tiktok' : 'shopee';
+// หน้าเดียวใช้ 3 แบบ: shopee.html (Shopee) / ?shop=tiktok (TikTok Shop) / ?shop=facebook (ลิงก์ Shopee แอฟฟิลิเอต → Facebook Reels "เพิ่มสินค้า")
+const SHOP = ['tiktok', 'facebook'].includes(new URLSearchParams(location.search).get('shop')) ? new URLSearchParams(location.search).get('shop') : 'shopee';
 const SHOPNAME = SHOP === 'tiktok' ? 'TikTok Shop' : 'Shopee';
-if (SHOP !== 'tiktok') document.querySelector('#autopost option[value=yes]').textContent = 'โพสต์เลย (ตามที่ติ๊กในหน้าโพสต์)';
+if (SHOP === 'shopee') document.querySelector('#autopost option[value=yes]').textContent = 'โพสต์เลย (ตามที่ติ๊กในหน้าโพสต์)';
+if (SHOP === 'facebook') {
+  document.title = 'KNF · คลิปขายของ Facebook';
+  document.querySelector('.logo small').textContent = 'FACEBOOK';
+  document.querySelector('nav a.on')?.removeAttribute('class');
+  document.querySelector('nav a[href="shopee.html?shop=facebook"]').className = 'on';
+  document.querySelector('.head .pill').textContent = 'Facebook Reels + Shopee Affiliate';
+  document.querySelector('#autopost option[value=yes]').textContent = 'โพสต์เลย (ขึ้น Facebook Reels + เพิ่มสินค้า)';
+  $('url').placeholder = 'https://s.shopee.co.th/... (ลิงก์ย่อแอฟฟิลิเอต)';
+  $('cta').value = 'จิ้มป้ายสินค้าในคลิปเลย 🛒';
+}
 if (SHOP === 'tiktok') {
   document.title = 'KNF · คลิปขายของ TikTok';
   document.querySelector('.logo small').textContent = 'TIKTOK';
