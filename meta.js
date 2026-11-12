@@ -88,7 +88,9 @@ async function ask(win, prompt, { want = 'json', timeoutMs = 180000, isStopped =
       if (stable >= 3) return fresh;
     }
   }
-  throw new Error(`Meta AI ไม่ตอบภายใน ${Math.round(timeoutMs / 1000)} วิ`);
+  // แนบท้ายข้อความที่ Meta ตอบจริงไว้ใน error: ปฏิเสธ/ขอล็อกอิน/ตอบไม่มี GENIX_START จะได้รู้ว่าเพราะอะไร (12 พ.ย.)
+  const tail = want === 'json' ? String(last || '').replace(/\s+/g, ' ').trim().slice(-160) : '';
+  throw new Error(`Meta AI ไม่ตอบภายใน ${Math.round(timeoutMs / 1000)} วิ${tail ? ` — ท้ายหน้า Meta: "${tail}"` : ''}`);
 }
 
 // แนบรูป (เช่น รูปสินค้าจริง) เข้าช่องอัปโหลดของ Meta AI ผ่าน DevTools protocol
