@@ -201,13 +201,15 @@ const autoSave = () => genix.newsAutoCfg({
   sites: $('autoSites').value.split('\n').map((s) => (s.match(/(?:https?:\/\/)?(?:www\.)?[\w.-]+\.[a-z]{2,}\/\S*/i) || [''])[0])
     .filter(Boolean).map((s) => (/^https?:\/\//i.test(s) ? s : 'https://www.' + s.replace(/^www\./, ''))),
   on: $('autoOn').checked, voice: $('voice').value, anchor: face || '',
+  shopLinks: $('autoLinks').value.split('\n').map((x) => (x.match(/https?:\/\/\S*shopee\S*/i) || [''])[0]).filter(Boolean),
 }).then(autoShow);
 function autoShow(c) {
   const next = !c.on ? 'ปิดอยู่' : (() => { const d = new Date(); for (let i = 1; i <= 48; i++) { const t = new Date(+d + i * 1800000); const h = t.getHours(); if (h >= c.start && h <= c.end && !((h - c.start) % c.everyH)) return `รอบถัดไป ~${String(h).padStart(2, '0')}:00`; } return ''; })();
   $('autoStat').textContent = `${next}${c.last ? ` · ล่าสุด ${new Date(c.last.at).toLocaleString('th-TH')}` : ''}`;
 }
-genix.newsAutoCfg().then((c) => { $('autoSites').value = c.sites.join('\n'); $('autoOn').checked = c.on; autoShow(c); });
+genix.newsAutoCfg().then((c) => { $('autoSites').value = c.sites.join('\n'); $('autoLinks').value = (c.shopLinks || []).join('\n'); $('autoOn').checked = c.on; autoShow(c); });
 $('autoSites').onchange = autoSave;
+$('autoLinks').onchange = autoSave;
 $('voice').addEventListener('change', autoSave);
 $('autoOn').onchange = () => {
   if ($('autoOn').checked && !confirm('เปิดข่าวอัตโนมัติ? ทุก 2 ชม. 08–22 จะทำคลิปแล้วโพสต์ลงเพจเองโดยไม่ถาม')) $('autoOn').checked = false;

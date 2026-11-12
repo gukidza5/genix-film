@@ -196,6 +196,14 @@ class NewsAuto {
         // มีคีย์ ElevenLabs = ข่าวอัตโนมัติใช้ Mali เสมอ (kidza ซื้อแล้ว 10 พ.ย. — ช่องเสียงในหน้าข่าวเคยเพี้ยนเป็น F5 แล้วพากย์ผิด)
         const voice = this.news.voices().find((v) => v.id.startsWith('eleven:'))?.id || c.voice || 'edge';
         const dir = await this.news.make(this.root, spec, voice, { log: this.log, gpuBusy: () => false, flow: this.flow });
+        // ลิงก์ Shopee แอฟฟิลิเอต (kidza 12 พ.ย.): หมุนใช้ทีละลิงก์ → ข่าว_link.txt ข้างคลิป → โพสต์เฟสใส่ที่ "เพิ่มสินค้า" (poster.js)
+        const links = (this.cfg().shopLinks || []).filter(Boolean);
+        if (links.length) {
+          const i = (this.cfg().linkIdx || 0) % links.length;
+          fs.writeFileSync(path.join(dir, 'output', 'ข่าว_link.txt'), links[i]);
+          this.cfg({ linkIdx: i + 1 });
+          log('🛒 ลิงก์สินค้ารอบนี้: ' + links[i]);
+        }
         const clip = this.listClips(this.root).find((x) => x.dir === dir);
         let posted = null;
         if (clip && c.platforms.length) { log('โพสต์'); posted = await this.poster.post(clip, c.platforms); }
