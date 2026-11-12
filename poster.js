@@ -199,21 +199,20 @@ async function finish(page, re, what, dryRun) {
   return 'ok';
 }
 
-// เฟสพาร์ทเนอร์แอฟฟิลิเอต: หน้า "การตั้งค่า" (หน้าที่มีปุ่มโพสต์) มีแถว "เพิ่มสินค้า — ใส่ลิงก์ไปยังสินค้าแอฟฟิลิเอต…" (แคปจอ kidza 12 พ.ย.)
-// กดแถวนั้น → วางลิงก์ย่อ s.shopee → ยืนยัน · shortcut: หน้าต่างหลังกดยังไม่เคยเห็น เดาช่อง/ปุ่มยืนยัน ถ้าพังแก้ตรงนี้
+// เฟสพาร์ทเนอร์แอฟฟิลิเอต: หน้า "การตั้งค่า" มีแถว "เพิ่มสินค้า" → หน้าต่าง "เพิ่มสินค้าแอฟฟิลิเอต" (วางลิงก์ย่อ s.shopee แล้วกดบันทึก)
+// โครงหน้าจริง (ดูผ่าน CDP 13 พ.ย.): [role=dialog] ของหน้าต่างนี้มีแค่หัว+ปุ่มปิด ส่วนช่อง URL และปุ่มบันทึกอยู่นอกกรอบ
+// → หาช่องจาก <label> ที่ขึ้นต้นด้วย "URL" ทั้งหน้า · ปุ่มต้องชื่อ "บันทึก" ตรงตัว (มีปุ่ม "บันทึกเป็นฉบับร่าง" อยู่ด้วย ห้ามกดผิด)
 async function fbAffiliate(page, link, log) {
   const vis = page.locator(':visible');
   await page.getByText(/^(เพิ่มสินค้า|Add products?)$/i).and(vis).first().click({ timeout: 15000 });
-  // หน้าสร้าง Reels เองก็เป็น [role=dialog] → ต้องเลือกหน้าต่างที่หัวเรื่องเป็น "เพิ่มสินค้าแอฟฟิลิเอต" (เดิมใช้ .last() ไปเจอผิดอัน กดบันทึกไม่ได้ 20:26)
-  const dlg = page.locator('[role=dialog]').filter({ hasText: /เพิ่มสินค้าแอฟฟิลิเอต|เพิ่มลิงก์สินค้า|affiliate/i }).and(vis).last();
-  await dlg.waitFor({ timeout: 10000 });
-  const input = dlg.locator('input[type=text], input[type=url], input:not([type])').and(vis).first(); // ช่องแรก = URL, ช่องสอง = ชื่อลิงก์ (ไม่ต้องใส่)
+  const head = page.locator('[role=dialog][aria-label="เพิ่มสินค้าแอฟฟิลิเอต"], [role=dialog][aria-label*="affiliate" i]').and(vis).last();
+  await head.waitFor({ timeout: 10000 });
+  const input = page.locator('label').filter({ hasText: /^\s*URL/ }).locator('input[type=text], input[type=url], input:not([type])').and(vis).first();
   await input.click({ timeout: 10000 });
-  await input.fill(link).catch(() => page.keyboard.insertText(link));
+  await input.fill(link);
   await sleep(3000); // เฟสเช็คลิงก์ ขึ้นติ๊กเขียว + ชื่อสินค้า
-  const save = dlg.getByRole('button', { name: /^(บันทึก|Save)$/i }).and(vis).last();
-  await save.click({ timeout: 10000 }).catch(() => dlg.getByText(/^(บันทึก|Save)$/i).and(vis).last().click({ timeout: 5000 }));
-  await dlg.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => { throw new Error('กดบันทึกแล้วหน้าต่างเพิ่มสินค้ายังไม่ปิด (ลิงก์ผิด?)'); });
+  await page.getByRole('button', { name: /^(บันทึก|Save)$/ }).and(vis).last().click({ timeout: 10000 });
+  await head.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => { throw new Error('กดบันทึกแล้วหน้าต่างเพิ่มสินค้ายังไม่ปิด (ลิงก์ผิด/เฟสไม่รับ?)'); });
   log('🛒 Facebook: เพิ่มสินค้าแอฟฟิลิเอตแล้ว ' + link);
 }
 
