@@ -202,13 +202,16 @@ async function finish(page, re, what, dryRun) {
 async function fbAffiliate(page, link, log) {
   const vis = page.locator(':visible');
   await page.getByText(/^(เพิ่มสินค้า|Add products?)$/i).and(vis).first().click({ timeout: 15000 });
-  const dlg = page.locator('[role=dialog]').and(vis).last();
-  const input = dlg.locator('input[type=text], input[type=url], input:not([type]), textarea, [contenteditable=true]').and(vis).first();
+  // หน้าสร้าง Reels เองก็เป็น [role=dialog] → ต้องเลือกหน้าต่างที่หัวเรื่องเป็น "เพิ่มสินค้าแอฟฟิลิเอต" (เดิมใช้ .last() ไปเจอผิดอัน กดบันทึกไม่ได้ 20:26)
+  const dlg = page.locator('[role=dialog]').filter({ hasText: /เพิ่มสินค้าแอฟฟิลิเอต|เพิ่มลิงก์สินค้า|affiliate/i }).and(vis).last();
+  await dlg.waitFor({ timeout: 10000 });
+  const input = dlg.locator('input[type=text], input[type=url], input:not([type])').and(vis).first(); // ช่องแรก = URL, ช่องสอง = ชื่อลิงก์ (ไม่ต้องใส่)
   await input.click({ timeout: 10000 });
   await input.fill(link).catch(() => page.keyboard.insertText(link));
-  await sleep(3000); // เฟสดึงรูป/ชื่อสินค้าจากลิงก์
-  await dlg.getByRole('button', { name: /^(เพิ่ม|บันทึก|เสร็จสิ้น|เสร็จ|ยืนยัน|ใช้|Add|Save|Done|Confirm|Apply)$/i }).and(vis).last().click({ timeout: 10000 });
-  await sleep(2500);
+  await sleep(3000); // เฟสเช็คลิงก์ ขึ้นติ๊กเขียว + ชื่อสินค้า
+  const save = dlg.getByRole('button', { name: /^(บันทึก|Save)$/i }).and(vis).last();
+  await save.click({ timeout: 10000 }).catch(() => dlg.getByText(/^(บันทึก|Save)$/i).and(vis).last().click({ timeout: 5000 }));
+  await dlg.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => { throw new Error('กดบันทึกแล้วหน้าต่างเพิ่มสินค้ายังไม่ปิด (ลิงก์ผิด?)'); });
   log('🛒 Facebook: เพิ่มสินค้าแอฟฟิลิเอตแล้ว ' + link);
 }
 
@@ -294,7 +297,7 @@ const DRIVERS = {
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
     // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
-    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => { throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 120)); });
+    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => { throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300)); });
     return finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
   },
 
