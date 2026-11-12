@@ -154,7 +154,7 @@ class Pipeline {
     for (const [i, s] of E.scenes.entries()) {
       const mp3 = this.f(`ep${ep}`, 'cut', `s${i + 1}.mp3`), v = voices.find((x) => x.id === chars.find((c) => c.name === s.speaker)?.f5);
       const r = v?.emo?.[EMO[s.emotion] || s.emotion] || v; // คลิปตัวอย่างตามอารมณ์ของบรรทัด ไม่มีก็ใช้เสียงปกติ
-      if (s.line && v && !has(mp3)) items.push({ ref: r.ref, ref_text: r.ref_text, text: s.line, out: mp3.replace(/\.mp3$/, '.f5.wav'), mp3 });
+      if (s.line && v && !has(mp3)) items.push({ ref: r.ref, ref_text: r.ref_text, text: s.say || s.line, out: mp3.replace(/\.mp3$/, '.f5.wav'), mp3 }); // say = คำอ่านให้ F5 ออกเสียงถูก ซับยังใช้ line
     }
     if (!items.length) return;
     this.step(ep, 5, `พากย์เสียง ${items.length} ประโยค (F5)`);
