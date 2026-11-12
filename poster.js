@@ -27,17 +27,29 @@ function listClips(root) {
     if (!fs.existsSync(odir)) continue;
     for (const f of fs.readdirSync(odir).filter((x) => /\.mp4$/i.test(x)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
       const file = path.join(odir, f);
-      const txt = file.replace(/\.mp4$/i, '_post.txt');
+      const txt = file.replace(/\.mp4$/i, '_post.txt'), lnk = file.replace(/\.mp4$/i, '_link.txt'); // ลิงก์ที่แปะในหน้าโพสต์ (จำไว้ต่อคลิป)
       const ep = (f.match(/\d+/) || [''])[0];
       out.push({
         dir, file, name: f, title: p.title || p.product?.title || d, mode: p.mode || 'film', created: p.created,
         caption: fs.existsSync(txt) ? fs.readFileSync(txt, 'utf8').trim() : `${p.title || ''} EP.${ep} 🎬\n#หนังสั้น #ซีรีส์ #${(p.genre || 'ละคร').replace(/\s/g, '')}`, // kidza 10 พ.ย.: ไม่เอาบรรทัดเครดิตเสียงในแคปชัน
-        product: p.product?.title || '', link: p.product?.url || '', shop: p.shop || (p.mode === 'shopee' ? 'shopee' : ''),
+        product: p.product?.title || '', link: fs.existsSync(lnk) ? fs.readFileSync(lnk, 'utf8').trim() : p.product?.url || '', shop: p.shop || (p.mode === 'shopee' ? 'shopee' : ''),
         posted: posted[f] || {},
       });
     }
   }
   return out.sort((a, b) => (b.created || 0) - (a.created || 0));
+}
+
+// หน้าโพสต์แก้แคปชัน/ลิงก์แล้วจำไว้ข้างคลิป: โพสต์อัตโนมัติ/เปิดหน้าใหม่ก็ใช้ค่านี้
+function saveClipMeta(file, { caption, link }) {
+  if (!/\.mp4$/i.test(file) || !fs.existsSync(file)) throw new Error('ไม่มีคลิปนี้');
+  if (caption !== undefined) fs.writeFileSync(file.replace(/\.mp4$/i, '_post.txt'), String(caption));
+  if (link !== undefined) {
+    const f = file.replace(/\.mp4$/i, '_link.txt'), v = String(link).trim();
+    if (v && !/^https?:\/\/\S+$/i.test(v)) throw new Error('ลิงก์ต้องขึ้นต้นด้วย http');
+    if (v) fs.writeFileSync(f, v); else fs.rmSync(f, { force: true });
+  }
+  return true;
 }
 
 function readJson(f, def) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return def; } }
@@ -185,6 +197,29 @@ async function finish(page, re, what, dryRun) {
   return 'ok';
 }
 
+// เฟสพาร์ทเนอร์แอฟฟิลิเอต (Shopee เชื่อมแล้ว 12 พ.ย.): แนบลิงก์เป็นแบนเนอร์สินค้าในหน้าแก้ไข Reels
+// shortcut: ยังไม่เคยเห็นหน้าจริง เดาปุ่มจากข้อความ ถ้าหาไม่เจอ/พัง คืน false ให้แปะลิงก์ท้ายแคปชันแทน — เทสโหมดทดลองแล้วแก้ regex ตรงนี้
+async function fbAffiliate(page, link, log) {
+  const vis = page.locator(':visible');
+  try {
+    const btn = page.getByRole('button', { name: /ลิงก์ผลิตภัณฑ์|ลิงก์สินค้า|ลิงก์แอฟฟิลิเอต|แท็กผลิตภัณฑ์|เพิ่มผลิตภัณฑ์|Product link|Affiliate link|Add product|Tag product/i }).and(vis).first();
+    await btn.click({ timeout: 6000 });
+    const dlg = page.locator('[role=dialog]').and(vis).last();
+    const input = dlg.locator('input[type=text], input[type=url], input:not([type]), textarea, [contenteditable=true]').and(vis).first();
+    await input.click({ timeout: 8000 });
+    await input.fill(link).catch(() => page.keyboard.insertText(link));
+    await sleep(2500); // เฟสดึงรายละเอียดสินค้าจากลิงก์
+    await dlg.getByRole('button', { name: /^(เพิ่ม|บันทึก|เสร็จสิ้น|ยืนยัน|ถัดไป|Add|Save|Done|Confirm|Next)$/i }).and(vis).last().click({ timeout: 8000 });
+    await sleep(2000);
+    log('🛒 Facebook: แนบแบนเนอร์สินค้าแอฟฟิลิเอตแล้ว');
+    return true;
+  } catch (e) {
+    await page.keyboard.press('Escape').catch(() => {});
+    log(`ℹ️ Facebook: แนบแบนเนอร์สินค้าไม่ได้ (${e.message.split(/\r?\n/)[0].slice(0, 80)}) — แปะลิงก์ท้ายแคปชันแทน`);
+    return false;
+  }
+}
+
 const DRIVERS = {
   // TikTok Studio (เทสจริง 9 พ.ย. หน้าอังกฤษ): อัป → ช่อง Description (DraftJS) → Add link: Select › Products › Next
   // → แท็บ Showcase products ค้นด้วยรหัสสินค้าจากลิงก์ → เลือก → Next → ชื่อบนคลิป (ตัด 30 ตัวให้เอง) → Add → Post
@@ -262,7 +297,8 @@ const DRIVERS = {
       throw new Error(`รอ${what}นานเกิน 2 นาที (หน้าเฟสเปลี่ยน?)`);
     };
     await until(box, 'ช่องแคปชัน');
-    const text = clip.link ? `${clip.caption}
+    const banner = clip.link && (await fbAffiliate(page, clip.link, log));
+    const text = clip.link && !banner ? `${clip.caption}
 
 🛒 สั่งซื้อ: ${clip.link}` : clip.caption;
     await typeInto(page, box, text);
@@ -326,4 +362,4 @@ const DRIVERS = {
   },
 };
 
-module.exports = { Poster, listClips, PLATFORMS };
+module.exports = { Poster, listClips, PLATFORMS, saveClipMeta };

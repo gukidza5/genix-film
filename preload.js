@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('genix', {
   queue: () => ipcRenderer.invoke('queue'),
   unqueue: (i) => ipcRenderer.invoke('unqueue', i),
   postClips: () => ipcRenderer.invoke('post:clips'),
+  postSave: (file, meta) => ipcRenderer.invoke('post:save', { file, meta }),
   postSettings: (s) => ipcRenderer.invoke('post:settings', s),
   post: (clip, platforms) => ipcRenderer.invoke('post:run', { clip, platforms }),
   postLogins: () => ipcRenderer.invoke('post:logins'),

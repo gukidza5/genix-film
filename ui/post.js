@@ -43,8 +43,14 @@ async function loadClips() {
       <div><b>${esc(c.title)}</b> <small>· ${esc(c.name)}</small><span class="st">${status(c.posted)}</span>
         <textarea data-k="caption">${esc(c.caption)}</textarea>
         <div class="row"><label>สินค้าในตะกร้า (ชื่อ/รหัส)<input data-k="product" value="${esc(c.product)}" placeholder="ไม่ใส่ = ไม่ปักตะกร้า"></label>
-          <label>ลิงก์สินค้า (แปะในเฟส)<input data-k="link" value="${esc(c.link)}" placeholder="https://s.shopee.co.th/..."></label></div>
+          <label>ลิงก์แอฟฟิลิเอต (เฟสแนบเป็นแบนเนอร์สินค้า ไม่ได้ค่อยแปะท้ายแคปชัน)<input data-k="link" value="${esc(c.link)}" placeholder="วางลิงก์ Shopee เช่น https://s.shopee.co.th/..."></label></div>
         <button data-a="post" class="primary">📤 โพสต์คลิปนี้</button> <button data-a="open">📂 เปิดไฟล์</button></div>`;
+    // แก้แคปชัน/ลิงก์แล้วจำไว้ข้างคลิปทันที (โพสต์อัตโนมัติก็ใช้ค่านี้)
+    d.querySelectorAll('[data-k=caption],[data-k=link]').forEach((x) => x.addEventListener('change', async () => {
+      const r = await genix.postSave(c.file, { [x.dataset.k]: x.value.trim() });
+      if (r?.error) { alert(r.error); return; }
+      x.style.outline = '2px solid #3c6'; setTimeout(() => (x.style.outline = ''), 800);
+    }));
     d.querySelector('video').onclick = (e) => (e.target.paused ? e.target.play() : e.target.pause());
     d.querySelector('[data-a=open]').onclick = () => genix.open(c.file);
     d.querySelector('[data-a=post]').onclick = async (e) => {

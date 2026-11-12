@@ -179,6 +179,7 @@ ipcMain.handle('extend', (_e, { dir, add, scenes }) => {
   return p;
 });
 ipcMain.handle('post:clips', () => listClips(ROOT));
+ipcMain.handle('post:save', (_e, { file, meta }) => { try { return require('./poster').saveClipMeta(file, meta); } catch (e) { return { error: e.message }; } });
 ipcMain.handle('post:settings', (_e, s) => (s ? poster.saveSettings(s) : poster.settings()));
 ipcMain.handle('post:run', (_e, { clip, platforms }) => poster.post(clip, platforms));
 ipcMain.handle('news:voices', () => news.voices());
