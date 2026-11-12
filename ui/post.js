@@ -39,7 +39,7 @@ async function loadClips() {
   for (const c of list) {
     const d = document.createElement('div');
     d.className = 'clip';
-    d.innerHTML = `<video src="${fileUrl(c.file)}" preload="metadata" muted></video>
+    d.innerHTML = `<video src="${fileUrl(c.file)}" preload="metadata" controls></video>
       <div><b>${esc(c.title)}</b> <small>· ${esc(c.name)}</small><span class="st">${status(c.posted)}</span>
         <textarea data-k="caption">${esc(c.caption)}</textarea>
         <div class="row"><label>สินค้าในตะกร้า (ชื่อ/รหัส)<input data-k="product" value="${esc(c.product)}" placeholder="ไม่ใส่ = ไม่ปักตะกร้า"></label>
@@ -51,7 +51,6 @@ async function loadClips() {
       if (r?.error) { alert(r.error); return; }
       x.style.outline = '2px solid #3c6'; setTimeout(() => (x.style.outline = ''), 800);
     }));
-    d.querySelector('video').onclick = (e) => (e.target.paused ? e.target.play() : e.target.pause());
     d.querySelector('[data-a=open]').onclick = () => genix.open(c.file);
     d.querySelector('[data-a=post]').onclick = async (e) => {
       const clip = { ...c };
