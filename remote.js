@@ -70,6 +70,10 @@ function startRemote(d) {
         style: b.style === 'cartoon' ? 'cartoon' : '', // การ์ตูน 3D แทนภาพเหมือนจริง
         ...(['f5', 'edge', 'eleven'].includes(b.tts) ? { tts: b.tts } : {}), // บังคับเสียงฟรี/เสียตังได้จากข้างนอก
       }));
+      if (u.pathname === '/api/post') { // โพสต์คลิปที่ทำเสร็จแล้ว (ไฟล์ต้องอยู่ในรายการคลิปของแอป) · ไม่รอ ดูผลที่ log/LINE
+        const pfs = (Array.isArray(b.platforms) ? b.platforms : []).filter((x) => ['facebook', 'tiktok', 'youtube', 'shopee'].includes(x));
+        return json(res, 200, d.post(String(b.file || ''), pfs.length ? pfs : undefined));
+      }
       if (u.pathname === '/api/auto') return json(res, 200, d.auto(!!b.on));
       if (u.pathname === '/api/stop') { d.stop(); return json(res, 200, { ok: true }); }
       return json(res, 404, { error: 'ไม่มี' });

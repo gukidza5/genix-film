@@ -289,6 +289,12 @@ app.whenReady().then(() => require('./remote').startRemote({
     if (job) { queue.push({ opts }); sendQueue(); return { queued: queue.length }; }
     return { dir: runJob({ opts }, 'remote') };
   },
+  post: (file, pfs) => {
+    const c = listClips(ROOT).find((x) => x.file === file);
+    if (!c) throw new Error('ไม่มีคลิปนี้ในรายการ');
+    poster.post(c, pfs).catch((e) => send('postlog', '❌ ' + e.message));
+    return { ok: true, name: c.name, platforms: pfs || 'ตามที่ติ๊กในหน้าโพสต์' };
+  },
   auto: (on) => { newsAuto.cfg({ on }); newsAuto.log(`📱 มือถือ${on ? 'เปิด' : 'ปิด'}ข่าวอัตโนมัติ`); return { on }; },
   stop: () => job && job.stop(),
 }));
