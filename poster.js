@@ -95,7 +95,7 @@ class Poster {
   }
 
   // โพสต์ 1 คลิปขึ้นแพลตฟอร์มที่เลือก — คืน { platform: 'ok'|'dry'|'error: ...' }
-  post(clip, platforms) {
+  post(clip, platforms, { now = false } = {}) { // now = ไม่รอเว้นช่วง (สั่งโพสต์ข่าวที่ตกรอบให้ขึ้นทันที)
     const run = async () => {
       // ปลายทางแยกตามชนิดคลิป (kidza 10 พ.ย.: หนังสั้นหลุดไปลงเพจข่าว) — dest.film = ตั้งในหน้า KNF Film · ไม่ตั้ง = ใช้ค่ากลาง (เพจข่าว)
       const g = this.settings(), d = g.dest?.[clip.mode];
@@ -108,7 +108,7 @@ class Poster {
         this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}`);
         let page;
         try {
-          if (!s.dryRun) await this.waitGap(pf, +s.gapMin || 0);
+          if (!s.dryRun && !now) await this.waitGap(pf, +s.gapMin || 0);
           page = await this.page(LOGIN[pf], pf);
           res[pf] = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage: s.fbPage, ytChannel: s.ytChannel });
           this.log(res[pf] === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว`);

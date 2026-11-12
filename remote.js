@@ -72,7 +72,7 @@ function startRemote(d) {
       }));
       if (u.pathname === '/api/post') { // โพสต์คลิปที่ทำเสร็จแล้ว (ไฟล์ต้องอยู่ในรายการคลิปของแอป) · ไม่รอ ดูผลที่ log/LINE
         const pfs = (Array.isArray(b.platforms) ? b.platforms : []).filter((x) => ['facebook', 'tiktok', 'youtube', 'shopee'].includes(x));
-        return json(res, 200, d.post(String(b.file || ''), pfs.length ? pfs : undefined));
+        return json(res, 200, d.post(String(b.file || ''), pfs.length ? pfs : undefined, b.now === true));
       }
       if (u.pathname === '/api/auto') return json(res, 200, d.auto(!!b.on));
       if (u.pathname === '/api/stop') { d.stop(); return json(res, 200, { ok: true }); }
