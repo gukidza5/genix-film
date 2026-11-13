@@ -9,7 +9,7 @@ const HOST = 'http://127.0.0.1:8188';
 const ROOT = path.join(require('./paths').AI, 'ComfyUI_windows_portable');
 const COMFY = path.join(ROOT, 'ComfyUI');
 const FPS = 16;
-const SIZE = { '9:16': [480, 832, 720, 1248], '16:9': [832, 480, 1248, 720], '1:1': [640, 640, 1024, 1024] }; // วิดีโอ w,h + รูป w,h
+const SIZE = { '9:16': [720, 1280, 720, 1248], '16:9': [1280, 720, 1248, 720], '1:1': [960, 960, 1024, 1024] }; // วิดีโอ w,h + รูป w,h — วิดีโอ 720p (kidza 13 พ.ย.: 480x832 ขยายเป็น 1080 แล้วเบลอ)
 const NEG = '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const seed = () => Math.floor(Math.random() * 2 ** 31);

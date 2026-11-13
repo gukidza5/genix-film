@@ -116,11 +116,11 @@ function readSpec() {
   return { ...spec, caption: $('cap').value.trim() };
 }
 
-// หน้าผู้ประกาศประจำ ใช้ key เดียวกับหน้าขายของ (genix.face) = ผู้หญิงคนเดิมทั้ง 2 หน้า
+// หน้าผู้ประกาศแยกจากหน้าพรีเซนเตอร์ขายของ (kidza 13 พ.ย.: เปลี่ยนนักข่าวแล้วพรีเซนเตอร์เปลี่ยนตาม) · ยังไม่เคยเลือก = เริ่มจากหน้าเดิมของขายของ
 let face = '';
-try { face = localStorage.getItem('genix.face'); } catch {}
+try { face = localStorage.getItem('genix.newsFace') ?? localStorage.getItem('genix.face'); } catch {}
 const showFace = () => { $('face').style.backgroundImage = face ? `url("${fileUrl(face)}")` : ''; $('face').textContent = face ? '' : 'เลือก'; };
-const saveFace = (f) => { face = f; try { localStorage.setItem('genix.face', f); } catch {} showFace(); };
+const saveFace = (f) => { face = f; try { localStorage.setItem('genix.newsFace', f); } catch {} showFace(); autoSave(); }; // autoSave = ข่าวอัตโนมัติใช้หน้าใหม่ด้วย
 $('face').onclick = async () => { const f = await genix.pickImage(); if (f) saveFace(f); };
 $('face').oncontextmenu = (e) => { e.preventDefault(); saveFace(''); };
 // null = ยังไม่เคยเลือก → ใช้หน้าเริ่มต้น · '' = คลิกขวาเอาออกเอง

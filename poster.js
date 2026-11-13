@@ -236,10 +236,13 @@ async function fbComment(page, fbPage, clip, log) {
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       await sleep(4000);
       if (!key || !(await bodyText()).includes(key)) continue;
-      await page.locator('[role=button][aria-label="แสดงความคิดเห็น"], [role=button][aria-label^="ความคิดเห็น"]').and(vis).first().click({ timeout: 6000 }).catch(() => {});
-      await sleep(3000);
-      if ((await bodyText()).includes(bare)) { log('💬 Facebook: มีคอมเมนต์ลิงก์อยู่แล้ว ข้าม'); return true; }
       const box = page.locator('[role=textbox][aria-label^="แสดงความคิดเห็น"]').and(vis).first();
+      // แผงคอมเมนต์เปิดเองแล้ว (คลิปคนคอมเมนต์เยอะ) กดปุ่มซ้ำ = ปิดแผง → กดเฉพาะตอนยังไม่เห็นกล่อง
+      if (!(await box.isVisible().catch(() => false))) {
+        await page.locator('[role=button][aria-label="แสดงความคิดเห็น"], [role=button][aria-label^="ความคิดเห็น"]').and(vis).first().click({ timeout: 6000 }).catch(() => {});
+        await sleep(3000);
+      }
+      if ((await bodyText()).includes(bare)) { log('💬 Facebook: มีคอมเมนต์ลิงก์อยู่แล้ว ข้าม'); return true; }
       await box.click({ timeout: 10000 });
       await page.keyboard.type(text, { delay: 15 });
       await sleep(1200);
