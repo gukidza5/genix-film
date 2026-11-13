@@ -8,7 +8,24 @@ function log(m) {
   l.textContent += `[${new Date().toLocaleTimeString('th-TH')}] ${m}\n`;
   l.scrollTop = l.scrollHeight;
 }
-genix.on('postlog', (m) => { log(m); if (/✅|🧪|❌/.test(m)) loadClips(); });
+// สถานะบนปุ่มระหว่างโพสต์ (kidza 13 พ.ย.: กดแล้วไม่รู้ว่ากำลังโพสต์/รออยู่) · โพสต์ทีละคลิปตามคิว → ข้อความ log เป็นของคลิปหัวคิว
+const queue = [], busy = {};
+const btnText = (file) => busy[file] || '📤 โพสต์คลิปนี้';
+function setBusy(file, text) {
+  if (text) busy[file] = text; else delete busy[file];
+  const b = document.querySelector(`[data-a=post][data-file="${CSS.escape(file)}"]`);
+  if (b) { b.textContent = btnText(file); b.disabled = !!text; }
+}
+genix.on('postlog', (m) => {
+  log(m);
+  const cur = queue[0];
+  if (cur) {
+    const at = m.match(/จะโพสต์ราว (\S+)/), pg = m.match(/→ \S*facebook\.com\/([^/\s]+)/);
+    if (at) setBusy(cur, '⏳ รอเว้นช่วง โพสต์ราว ' + at[1]);
+    else if (/📤/.test(m)) setBusy(cur, '📤 กำลังโพสต์…' + (pg ? ' ' + pg[1] : ''));
+  }
+  if (/✅|🧪|❌/.test(m)) loadClips();
+});
 
 async function loadSettings() {
   const s = await genix.postSettings();
@@ -44,7 +61,7 @@ async function loadClips() {
         <textarea data-k="caption">${esc(c.caption)}</textarea>
         <div class="row"><label>สินค้าในตะกร้า (ชื่อ/รหัส)<input data-k="product" value="${esc(c.product)}" placeholder="ไม่ใส่ = ไม่ปักตะกร้า"></label>
           <label>ลิงก์แอฟฟิลิเอต (เฟสแนบเป็นแบนเนอร์สินค้า ไม่ได้ค่อยแปะท้ายแคปชัน)<input data-k="link" value="${esc(c.link)}" placeholder="วางลิงก์ Shopee เช่น https://s.shopee.co.th/..."></label></div>
-        <button data-a="post" class="primary">📤 โพสต์คลิปนี้</button> <button data-a="open">📂 เปิดไฟล์</button></div>`;
+        <button data-a="post" class="primary" data-file="${esc(c.file)}" ${busy[c.file] ? 'disabled' : ''}>${btnText(c.file)}</button> <button data-a="open">📂 เปิดไฟล์</button></div>`;
     // แก้แคปชัน/ลิงก์แล้วจำไว้ข้างคลิปทันที (โพสต์อัตโนมัติก็ใช้ค่านี้)
     d.querySelectorAll('[data-k=caption],[data-k=link]').forEach((x) => x.addEventListener('change', async () => {
       const r = await genix.postSave(c.file, { [x.dataset.k]: x.value.trim() });
@@ -58,9 +75,13 @@ async function loadClips() {
       const on = Object.keys(PF).filter((k) => $('pf_' + k).checked);
       if (!on.length) return alert('ติ๊กแพลตฟอร์มที่จะโพสต์ก่อน');
       if (!$('dryRun').checked && !confirm(`โพสต์จริง "${c.name}" ขึ้น ${on.map((k) => PF[k]).join(', ')}?`)) return;
-      e.target.disabled = true;
-      await genix.post(clip, on);
-      e.target.disabled = false;
+      queue.push(c.file);
+      setBusy(c.file, queue.length > 1 ? '🕒 รอคิว (มีคลิปโพสต์อยู่ก่อน)' : '📤 กำลังโพสต์…');
+      try { await genix.post(clip, on); } finally {
+        queue.splice(queue.indexOf(c.file), 1);
+        setBusy(c.file, '');
+        loadClips();
+      }
     };
     $('clips').append(d);
   }
