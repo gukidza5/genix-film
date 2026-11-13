@@ -377,13 +377,20 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
     const real = await realPhotos(dir, spec, log).catch(() => []);
     if (real.some(Boolean)) pick = (k) => real[k] || real.find(Boolean);
   }
+  // แบบบอร์ดสืบสวน (kidza 13 พ.ย. "รอบหน้าทำข่าวแนวนี้แทน"): กระดาษยับ รูปโพลารอยด์ปักหมุด เชือกแดง การ์ดข้อมูล ไม่มีผู้ประกาศ (news/board.js) · พังก็ถอยไปแบบรูปเต็มจอ
+  let board = false;
   if (pick) {
     spec.style = 'photo';
-    for (const k of spec.shots.keys()) await photoFrame(pick(k), path.join(dir, 'shots', `bg_${k}.png`), log);
+    if ((spec.look || 'board') === 'board') {
+      spec.shots.forEach((s, k) => { s.photo = pick(k); });
+      fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 1));
+      board = await sh('node', [path.join(DIR, 'board.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log).then(() => true, (e) => (log('⚠️ ทำบอร์ดไม่ได้ ใช้แบบรูปเต็มจอ: ' + e.message.slice(0, 120)), false));
+    }
+    if (!board) for (const k of spec.shots.keys()) await photoFrame(pick(k), path.join(dir, 'shots', `bg_${k}.png`), log);
   }
   fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 1));
-  // พาดหัว 3 วิแรก + ซับทุกช็อต (kidza 12 พ.ย. เปลี่ยนจาก "ไม่มีตัวหนังสือ" 10 พ.ย. เพราะยอดวิวน้อย) · วาดไม่ได้ก็ไปต่อแบบไม่มีตัวหนังสือ
-  if (pick) await sh('node', [path.join(DIR, 'textpng.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log).catch((e) => log('⚠️ ทำพาดหัว/ซับไม่ได้: ' + e.message.slice(0, 120)));
+  // พาดหัว 3 วิแรก + ซับทุกช็อต (kidza 12 พ.ย. เปลี่ยนจาก "ไม่มีตัวหนังสือ" 10 พ.ย. เพราะยอดวิวน้อย) · วาดไม่ได้ก็ไปต่อแบบไม่มีตัวหนังสือ · บอร์ดมีตัวหนังสือในภาพแล้ว
+  if (pick && !board) await sh('node', [path.join(DIR, 'textpng.js'), path.join(dir, 'spec.json'), path.join(dir, 'shots')], {}, log).catch((e) => log('⚠️ ทำพาดหัว/ซับไม่ได้: ' + e.message.slice(0, 120)));
   fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify({ title: spec.title || 'สรุปข่าว', mode: 'news', created: Date.now(), voice }, null, 2));
 
   if (!pick) {
@@ -420,7 +427,7 @@ async function make(root, spec, voice, { log, gpuBusy, flow }) {
   spec.duo = duo; fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 1)); // build.py แยกเสียงชาย/หญิงให้ปากขยับคนละกรอบ
   await sh('python', [path.join(DIR, 'build.py'), dir, ...(sub ? [sub] : [])], {}, log);
   const built = path.join(dir, sub ? `out_${sub}.mp4` : 'out.mp4');
-  if (spec.anchor && fs.existsSync(spec.anchor)) { // ผู้ประกาศมุมขวาล่างทุกแบบ (kidza 10 พ.ย. ขอคืนหลังเปลี่ยนเป็นแบบรูปเต็มจอ)
+  if (!board && spec.anchor && fs.existsSync(spec.anchor)) { // ผู้ประกาศมุมขวาล่างทุกแบบ ยกเว้นบอร์ด (คลิปตัวอย่างไม่มีผู้ประกาศ) (kidza 10 พ.ย. ขอคืนหลังเปลี่ยนเป็นแบบรูปเต็มจอ)
     try { await addAnchor(dir, spec.anchor, built, path.join(dir, 'output', 'ข่าว.mp4'), { log, gpuBusy, face2: duo ? maleFace(spec.anchor) : null,
       vo: spec.shots.map((_, k) => (sub ? path.join(dir, sub, `vo${k}.wav`) : path.join(dir, 'tmp', `vo${k}.mp3`))), who: spec.shots.map((s) => s.who), emo: spec.shots.map((s) => s.emo) }); }
     catch (e) { log('⚠️ ใส่ผู้ประกาศไม่ได้: ' + e.message.slice(0, 200)); fs.copyFileSync(built, path.join(dir, 'output', 'ข่าว.mp4')); }
