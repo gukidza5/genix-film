@@ -159,6 +159,9 @@ class ShopeePipeline extends Pipeline {
       for (const [i, s] of C.scenes.entries()) {
         this.step(n, 2, `ฉาก ${i + 1}/${C.scenes.length}`);
         s.frame = await this.geminiFrame(n, i, s, p, look);
+        // Gemini คีย์ฟรีวาดรูปไม่ได้ (429) → ComfyUI ในเครื่อง (Qwen edit แนบรูปสินค้า) ก่อนถอยไป Meta (13 พ.ย.)
+        if (!s.frame) s.frame = await this.comfyRun({ kind: 'image', refs: [face || p.product.file], out: this.f(`clip${n}`, `s${i + 1}.png`),
+          prompt: `Create a new photo that uses exactly the product from the reference picture (same shape, color, material, label): ${s.image_prompt}. ${look}. ${T.style[p.style]}, ${T.scene[p.scene]}` });
         if (!s.frame) s.frame = await this.media(`Imagine, using the attached product photo exactly as the product: ${s.image_prompt}. ${look}. ${T.style[p.style]}, ${T.scene[p.scene]}, ${p.aspect} aspect ratio`,
           'image', this.f(`clip${n}`, `s${i + 1}.jpg`), 240000, [face || p.product.file]);
         this.save();
