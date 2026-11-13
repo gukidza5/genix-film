@@ -106,7 +106,9 @@ class Poster {
       const shopPages = clip.mode === 'shopee' ? String(g.fbPageShop || '').split(/\s+/).filter(Boolean) : [];
       const res = {};
       for (const pf of platforms || (d ? d.platforms || [] : Object.keys(s.platforms).filter((k) => s.platforms[k]))) {
-        const pages = pf === 'facebook' && shopPages.length ? shopPages : [s.fbPage];
+        // เพจที่ว่างนานสุดโพสต์ก่อน (เพจที่ต้องรอเว้นช่วงไปไว้ท้าย ไม่ให้ขวางเพจอื่น)
+        const lastAt = readJson(this.lastFile, {}), ago = (pg) => Date.parse(lastAt['facebook|' + pg] || 0);
+        const pages = pf === 'facebook' && shopPages.length ? [...shopPages].sort((a, b) => ago(a) - ago(b)) : [s.fbPage];
         const multi = pages.length > 1;
         const done = (v) => v && !String(v).startsWith('error') && v !== 'dry';
         const results = [], raw = []; // results = ค่าที่จำ (เวลา/error) · raw = ที่คืนให้คนเรียก ('ok'|'dry'|'error: …')
