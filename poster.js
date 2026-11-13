@@ -57,6 +57,26 @@ function readJson(f, def) { try { return JSON.parse(fs.readFileSync(f, 'utf8'));
 const exec = (cmd, args) => new Promise((ok, no) => require('child_process').execFile(cmd, args, { windowsHide: true, maxBuffer: 1e7 }, (e, so, se) => (e ? no(new Error(String(se || e.message).slice(-300))) : ok(so))));
 // คลิปเดียวลงหลายเพจร้าน (kidza 14 พ.ย.): ทำไฟล์ต่างกันนิดต่อเพจ ให้เฟสไม่มองเป็นคลิปซ้ำ — ตัดท้าย 0.4–1 วิ, ซูม 2–4% เลื่อนกรอบ, สี/ความสว่าง, เสียงดังค่อย
 // สุ่มจากชื่อเพจ (โพสต์ซ้ำเพจเดิมได้ไฟล์เดิม) · ไม่ตัดหัว (เสียงพากย์เริ่มทันที) · ไม่กลับด้าน (ตัวหนังสือบนคลิปกลับ) · ไม่เปลี่ยนเพลง
+// แคปชันเฟสต่อเพจ (kidza 14 พ.ย.): ตัดบรรทัดที่มีลิงก์ · อีโมจิหน้าบรรทัดแรก + สลับลำดับแฮชแท็ก + ประโยคชี้ไปคอมเมนต์ สุ่มจากชื่อเพจ (เพจเดิมได้แบบเดิม)
+function fbCaption(caption, seed, hasLink) {
+  let h = 2166136261;
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  const r = (n) => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return h % n; };
+  const lines = String(caption).split('\n').filter((l) => !/https?:\/\//i.test(l));
+  const tagRe = /^\s*(#\S+\s*)+$/;
+  const i0 = lines.findIndex((l) => l.trim());
+  if (i0 >= 0) lines[i0] = ['', '🔥 ', '✨ ', '👉 ', '💥 ', '⚡ '][r(6)] + lines[i0].trim();
+  for (const [i, l] of lines.entries()) {
+    if (!tagRe.test(l)) continue;
+    const t = l.trim().split(/\s+/);
+    for (let j = t.length - 1; j > 0; j--) { const k = r(j + 1); [t[j], t[k]] = [t[k], t[j]]; }
+    lines[i] = t.join(' ');
+  }
+  let out = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (hasLink) out += '\n\n' + ['📌 พิกัดสินค้าอยู่ในคอมเมนต์แรก 👇', '🛒 ลิงก์สินค้าอยู่ในคอมเมนต์นะ 👇', '👇 จิ้มลิงก์ในคอมเมนต์ได้เลย', '🛍️ ดูสินค้าที่คอมเมนต์แรก', '💬 พิกัดอยู่ใต้คอมเมนต์ 👇'][r(5)];
+  return out;
+}
+
 async function variant(file, seed) {
   let h = 2166136261;
   for (const c of seed + path.basename(file)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
@@ -304,7 +324,8 @@ async function fbAffiliate(page, link, log) {
 async function fbComment(page, fbPage, clip, log) {
   const text = '🛒 พิกัดสินค้า 👉 ' + clip.link;
   const bare = clip.link.replace(/^https?:\/\//, '');
-  const key = (clip.caption.split('\n').find((l) => l.trim()) || '').replace(/\s+/g, ' ').trim().slice(0, 18);
+  // ตัดอีโมจินำหน้า (fbCaption ใส่ให้) — เฟสวาดอีโมจิเป็นรูป innerText ไม่มี
+  const key = (clip.caption.split('\n').find((l) => l.trim()) || '').replace(/\s+/g, ' ').replace(/^[^\p{L}\p{N}]+/u, '').trim().slice(0, 18);
   const list = !fbPage ? 'https://www.facebook.com/me/reels/' : /profile\.php\?id=/.test(fbPage) ? fbPage + '&sk=reels_tab' : fbPage.replace(/\/?$/, '/reels/');
   const vis = page.locator(':visible');
   const bodyText = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
@@ -417,19 +438,14 @@ const DRIVERS = {
       throw new Error(`รอ${what}นานเกิน 2 นาที (หน้าเฟสเปลี่ยน?)`);
     };
     await until(box, 'ช่องแคปชัน');
-    const text = clip.caption; // ลิงก์ไปใส่ที่ "เพิ่มสินค้า" หน้าตั้งค่า ไม่ต่อท้ายแคปชัน
+    // kidza 14 พ.ย.: ไม่กด "เพิ่มสินค้า" (fbAffiliate) แล้ว — โพสต์แค่แคปชัน (ตัดบรรทัดลิงก์) ลิงก์ไปคอมเมนต์แรกอย่างเดียว · แคปชันต่างกันต่อเพจ
+    const text = fbCaption(clip.caption, fbPage || 'me', !!clip.link);
     await typeInto(page, box, text);
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
-    // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
-    // ยังไม่ผูก Affiliate = โพสต์ต่อ ลิงก์ไปอยู่คอมเมนต์แรก (ลิงก์ย่อเป็นลิงก์แอฟฟิลิเอตของเราอยู่แล้ว) · พังแบบอื่น = ไม่โพสต์
-    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => {
-      if (e.nolink) return log('⚠️ Facebook: ' + e.message + ' (ไม่มีแบนเนอร์สินค้า ใส่ลิงก์ในคอมเมนต์แทน) — ผูกได้ที่ปุ่ม "เพิ่มสินค้า" ตอนสร้าง Reels ในนามเพจนั้น');
-      throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300));
-    });
     const r = await finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
-    // คอมเมนต์ลิงก์ไม่ได้ ≠ โพสต์พัง (คลิปขึ้นแล้ว) → แค่ log
-    if (r === 'ok' && clip.link) await fbComment(page, fbPage, clip, log).catch((e) => log('⚠️ Facebook: คอมเมนต์ลิงก์ไม่ได้: ' + e.message.slice(0, 150)));
+    // คอมเมนต์ลิงก์ไม่ได้ ≠ โพสต์พัง (คลิปขึ้นแล้ว) → แค่ log · fbComment หา reel ด้วยต้นแคปชัน → ส่งแคปชันที่โพสต์จริง
+    if (r === 'ok' && clip.link) await fbComment(page, fbPage, { ...clip, caption: text }, log).catch((e) => log('⚠️ Facebook: คอมเมนต์ลิงก์ไม่ได้: ' + e.message.slice(0, 150)));
     return r;
   },
 
@@ -488,4 +504,4 @@ const DRIVERS = {
   },
 };
 
-module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment, variant };
+module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment, variant, fbCaption };
