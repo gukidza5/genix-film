@@ -82,7 +82,11 @@ class NewsAuto {
       const r = await this.round();
       if (r.dir) await this.say(`✅ ข่าว ${at} ${r.posted ? 'โพสต์แล้ว' : 'ทำเสร็จ (ไม่ได้ติ๊กที่โพสต์)'}\n${r.title}\n${Object.entries(r.posted || {}).map(([p, v]) => `${PF[p] || p}: ${v === 'ok' || /^\d{4}-/.test(v) ? '✓' : v === 'dry' ? 'โหมดทดลอง' : '✗ ' + String(v).replace(/^error: /, '').slice(0, 120)}`).join('\n')}`);
       else if (r.skipped === 'all failed') await this.say(`⚠️ ข่าว ${at}: ทำไม่ได้สักข่าว (บทมีเลขแต่ง/เขียนบทพัง) ดูบันทึกในแอป`);
-    } catch (e) { await this.say(`❌ ข่าว ${at} พัง: ${e.message.slice(0, 300)}`); throw e; }
+    } catch (e) {
+      // พังครั้งแรกของรอบ (เช่น Gemini ค้าง timeout 13 พ.ย. 14:11) = ลองรอบเดิมใหม่อีกครั้งในนาทีถัดไป · พังซ้ำค่อยแจ้งแล้วทิ้งรอบนี้
+      if (!(this.retried ||= {})[slot]) { this.retried[slot] = 1; this.cfg({ lastSlot: null }); this.log(`🔁 ข่าว ${at} พัง (${e.message.slice(0, 120)}) ลองใหม่อีกรอบ`); return; }
+      await this.say(`❌ ข่าว ${at} พัง: ${e.message.slice(0, 300)}`); throw e;
+    }
   }
   // kidza 11 พ.ย.: ลบคลิปข่าวที่โพสต์ครบแล้วทุกวัน (หลังเก็บยอดวิว 23:30) · โพสต์ไม่ผ่านสักช่อง/ยังไม่โพสต์ = เก็บไว้ให้โพสต์ซ้ำ
   cleanup() {
