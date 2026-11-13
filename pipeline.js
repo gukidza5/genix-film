@@ -9,7 +9,6 @@ const comfy = require('./comfy');
 const STAGES = ['คิดพล็อต', 'แคสต์', 'ถ่ายรูปนักแสดง', 'เขียนบท', 'สร้างเฟรม', 'สร้างวิดีโอ', 'ตัดต่อ'];
 const VOICE = { male: 'th-TH-NiwatNeural', female: 'th-TH-PremwadeeNeural' };
 const W = 1080, H = 1920;
-const EMO = { กลัว: 'เศร้าแรง', ตะโกน: 'โกรธแรง', ร้องไห้: 'เศร้าแรง' }; // อารมณ์ที่ THAI SER ไม่มี ใช้ระดับเข้มข้นแทน
 const { VO } = require('./paths');
 const F5 = { python: path.join(VO, 'venv/Scripts/python.exe'), py: path.join(VO, 'genix_tts.py'), voices: path.join(VO, 'refs/voices.json') };
 // แนวที่ชื่ออย่างเดียวไม่พอให้ AI เข้าใจ → อธิบายเพิ่มในคำสั่งพล็อต (kidza เพิ่มคำคมบาดใจ 9 พ.ย.)
@@ -146,7 +145,11 @@ class Pipeline {
     const chars = this.p.cast.characters;
     for (const c of chars) {
       if (c.f5) continue; // จำเสียงไว้ในโปรเจกต์ ทุก EP ได้เสียงเดิม
-      const g = c.gender === 'female' ? 'female' : 'male', pool = [...voices.filter((v) => v.gender === g && v.emo), ...voices.filter((v) => v.gender === g && !v.emo)]; // เสียงที่มีอารมณ์ (THAI SER) ก่อน
+      const g = c.gender === 'female' ? 'female' : 'male';
+      // เสียงที่ kidza เลือกเองแล้วชอบมาก่อน (12 พ.ย.): หญิงวัยกลางคนขึ้นไป = serหญิง011 (แม่สมร) · หญิงสาว = serหญิง005 · 004 ไม่เอา
+      const age = +((c.look || '').match(/(\d{2})-year-old/) || [])[1] || 30;
+      const like = g === 'female' ? (age >= 40 ? ['serหญิง011', 'serหญิง005'] : ['serหญิง005', 'serหญิง011']) : [];
+      const pool = [...like.map((id) => voices.find((v) => v.id === id)).filter(Boolean), ...voices.filter((v) => v.gender === g && v.emo && !like.includes(v.id) && v.id !== 'serหญิง004'), ...voices.filter((v) => v.gender === g && !v.emo)];
       const taken = chars.filter((x) => x.f5).map((x) => x.f5);
       c.f5 = (pool.find((v) => !taken.includes(v.id)) || pool[0])?.id;
     }
@@ -154,8 +157,10 @@ class Pipeline {
     const items = [];
     for (const [i, s] of E.scenes.entries()) {
       const mp3 = this.f(`ep${ep}`, 'cut', `s${i + 1}.mp3`), v = voices.find((x) => x.id === chars.find((c) => c.name === s.speaker)?.f5);
-      const r = v?.emo?.[EMO[s.emotion] || s.emotion] || v; // คลิปตัวอย่างตามอารมณ์ของบรรทัด ไม่มีก็ใช้เสียงปกติ
-      if (s.line && v && !has(mp3)) items.push({ ref: r.ref, ref_text: r.ref_text, text: s.say || s.line, out: mp3.replace(/\.mp3$/, '.f5.wav'), mp3 }); // say = คำอ่านให้ F5 ออกเสียงถูก ซับยังใช้ line
+      // kidza 13 พ.ย. "เสียงมั่วไปหมด": สลับคลิปตัวอย่างตามอารมณ์ทุกบรรทัด = ตัวเดียวกันเสียงเปลี่ยนไปมา + คลิป SER พูดเร็ว บทเลยรัว
+      // → คลิปเสียงปกติตัวเดียวทั้งเรื่อง (อารมณ์มาจากบท) + พูดช้าลง 0.85
+      const r = v;
+      if (s.line && v && !has(mp3)) items.push({ ref: r.ref, ref_text: r.ref_text, text: s.say || s.line, out: mp3.replace(/\.mp3$/, '.f5.wav'), mp3, speed: 0.85 }); // say = คำอ่านให้ F5 ออกเสียงถูก ซับยังใช้ line
     }
     if (!items.length) return;
     this.step(ep, 5, `พากย์เสียง ${items.length} ประโยค (F5)`);
