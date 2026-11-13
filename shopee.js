@@ -194,6 +194,18 @@ class ShopeePipeline extends Pipeline {
       this.save();
       this.emit('asset', { kind: 'final', file: C.final, cover: C.cover, name: `คลิป ${n}: ${C.scenes[0]?.overlay || ''}` });
       this.log(`✅ คลิป ${n} เสร็จ: ${C.final}`);
+      // ก๊อปขึ้น Google Drive (kidza 13 พ.ย.: เครื่อง MM ลง Drive for desktop เป็น G:\My Drive) · เครื่องไหนไม่มี Drive = ข้าม
+      const drive = ['G', 'H', 'I', 'D', 'E', 'F'].flatMap((l) => [`${l}:\\My Drive`, `${l}:\\ไดรฟ์ของฉัน`]).find((d) => fs.existsSync(d));
+      if (drive) {
+        try {
+          const dst = path.join(drive, 'KNF คลิปปักตะกร้า');
+          fs.mkdirSync(dst, { recursive: true });
+          const name = `${path.basename(this.dir)}_${(p.product.title || '').replace(/[\\/:*?"<>|\r\n]+/g, ' ').slice(0, 40).trim()}_clip${n}`;
+          fs.copyFileSync(C.final, path.join(dst, name + '.mp4'));
+          fs.copyFileSync(C.post, path.join(dst, name + '.txt'));
+          this.log(`☁️ ขึ้น Google Drive แล้ว: ${dst}\\${name}.mp4`);
+        } catch (e) { this.log(`⚠️ ก๊อปขึ้น Google Drive ไม่ได้: ${e.message}`); }
+      }
     }
     this.emit('done', { dir });
   }
