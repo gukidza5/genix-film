@@ -98,6 +98,9 @@ class Poster {
   // โพสต์ 1 คลิปขึ้นแพลตฟอร์มที่เลือก — คืน { platform: 'ok'|'dry'|'error: ...' }
   post(clip, platforms, { now = false } = {}) { // now = ไม่รอเว้นช่วง (สั่งโพสต์ข่าวที่ตกรอบให้ขึ้นทันที)
     const run = async () => {
+      // อ่านสถานะโพสต์จากไฟล์ตอนถึงคิวจริง (13 พ.ย.: กดซ้ำระหว่างรอบก่อนรอเว้นช่วง → คิวหลังถือสถานะเก่า จะโพสต์ซ้ำเพจที่รอบก่อนลงไปแล้ว)
+      const fresh = () => readJson(path.join(clip.dir, 'posted.json'), {})[clip.name] || {};
+      clip = { ...clip, posted: fresh() };
       // ปลายทางแยกตามชนิดคลิป (kidza 10 พ.ย.: หนังสั้นหลุดไปลงเพจข่าว) — dest.film = ตั้งในหน้า KNF Film · ไม่ตั้ง = ใช้ค่ากลาง (เพจข่าว)
       const g = this.settings(), d = g.dest?.[clip.mode];
       const s = d ? { ...g, fbPage: d.fbPage || '', ytChannel: d.ytChannel || '' } : { ...g };
@@ -122,6 +125,8 @@ class Poster {
           try {
             const gapKey = pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf;
             if (!s.dryRun && !now) await this.waitGap(gapKey, +s.gapMin || 0);
+            const after = fresh()[key]; // ระหว่างรอ มีรอบอื่นลงเพจนี้ไปแล้ว = ข้าม
+            if (done(after)) { this.log(`⏭️ ${PLATFORMS[pf]}: ${fbPage || ''} ลงไปแล้วระหว่างรอ ข้าม`); results.push(after); raw.push(after); continue; }
             page = await this.page(LOGIN[pf], pf);
             r = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
             this.log(r === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว${multi ? ' ' + fbPage : ''}`);
