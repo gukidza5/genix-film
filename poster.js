@@ -54,6 +54,23 @@ function saveClipMeta(file, { caption, link }) {
 
 function readJson(f, def) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return def; } }
 
+const exec = (cmd, args) => new Promise((ok, no) => require('child_process').execFile(cmd, args, { windowsHide: true, maxBuffer: 1e7 }, (e, so, se) => (e ? no(new Error(String(se || e.message).slice(-300))) : ok(so))));
+// คลิปเดียวลงหลายเพจร้าน (kidza 14 พ.ย.): ทำไฟล์ต่างกันนิดต่อเพจ ให้เฟสไม่มองเป็นคลิปซ้ำ — ตัดท้าย 0.4–1 วิ, ซูม 2–4% เลื่อนกรอบ, สี/ความสว่าง, เสียงดังค่อย
+// สุ่มจากชื่อเพจ (โพสต์ซ้ำเพจเดิมได้ไฟล์เดิม) · ไม่ตัดหัว (เสียงพากย์เริ่มทันที) · ไม่กลับด้าน (ตัวหนังสือบนคลิปกลับ) · ไม่เปลี่ยนเพลง
+async function variant(file, seed) {
+  let h = 2166136261;
+  for (const c of seed + path.basename(file)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  const out = path.join(require('os').tmpdir(), `genix_var_${h.toString(36)}.mp4`);
+  const r = (lo, hi) => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return lo + (h / 2 ** 32) * (hi - lo); };
+  const info = JSON.parse(await exec('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:format=duration', '-of', 'json', file]));
+  const { width: W, height: H } = info.streams[0], dur = +info.format.duration;
+  const z = r(1.02, 1.04), ox = r(0, 1), oy = r(0, 1);
+  const vf = `crop=iw/${z}:ih/${z}:(iw-iw/${z})*${ox}:(ih-ih/${z})*${oy},scale=${W}:${H},eq=brightness=${r(-0.02, 0.02).toFixed(3)}:saturation=${r(1, 1.06).toFixed(3)}`;
+  await exec('ffmpeg', ['-v', 'error', '-y', '-i', file, '-t', (dur - r(0.4, 1)).toFixed(2), '-vf', vf, '-af', `volume=${r(0.94, 1.06).toFixed(3)}`,
+    '-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-map_metadata', '-1', '-movflags', '+faststart', out]);
+  return out;
+}
+
 class Poster {
   constructor({ flow, settingsFile, log }) {
     Object.assign(this, { flow, settingsFile, log });
@@ -131,16 +148,20 @@ class Poster {
               const after = fresh()[key];
               if (done(after)) return { skip: after };
               if (!s.dryRun && !now && this.gapLeft(gapKey, +s.gapMin || 0) > 0) return { again: true };
-              let page, r;
+              let page, r, c = clip;
               try {
+                if (multi && pf === 'facebook' && !s.dryRun) {
+                  c = { ...clip, file: await variant(clip.file, fbPage).catch((e) => (this.log('⚠️ ทำไฟล์แยกเพจไม่ได้ ใช้ไฟล์เดิม: ' + e.message), clip.file)) };
+                }
                 page = await this.page(LOGIN[pf], pf);
-                r = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
+                r = await DRIVERS[pf](page, c, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
                 this.log(r === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว${multi ? ' ' + fbPage : ''}`);
               } catch (e) {
                 r = 'error: ' + e.message;
                 this.log(`❌ ${PLATFORMS[pf]}${multi ? ' ' + fbPage : ''}: ${e.message}`);
                 page?.bringToFront().catch(() => {});
               }
+              if (c.file !== clip.file) fs.rmSync(c.file, { force: true });
               const v = r === 'ok' ? new Date().toISOString() : r;
               this.mark(clip, key, v);
               if (r === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [gapKey]: v }));
@@ -467,4 +488,4 @@ const DRIVERS = {
   },
 };
 
-module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment };
+module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment, variant };
