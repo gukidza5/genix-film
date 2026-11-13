@@ -438,11 +438,17 @@ const DRIVERS = {
       throw new Error(`รอ${what}นานเกิน 2 นาที (หน้าเฟสเปลี่ยน?)`);
     };
     await until(box, 'ช่องแคปชัน');
-    // kidza 14 พ.ย.: ไม่กด "เพิ่มสินค้า" (fbAffiliate) แล้ว — โพสต์แค่แคปชัน (ตัดบรรทัดลิงก์) ลิงก์ไปคอมเมนต์แรกอย่างเดียว · แคปชันต่างกันต่อเพจ
+    // kidza 14 พ.ย.: แคปชันไม่มีบรรทัดลิงก์ (ลิงก์อยู่แถบสินค้า + คอมเมนต์แรก) · แคปชันต่างกันต่อเพจ
     const text = fbCaption(clip.caption, fbPage || 'me', !!clip.link);
     await typeInto(page, box, text);
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
+    // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
+    // ยังไม่ผูก Affiliate = โพสต์ต่อ ลิงก์ไปอยู่คอมเมนต์แรก (ลิงก์ย่อเป็นลิงก์แอฟฟิลิเอตของเราอยู่แล้ว) · พังแบบอื่น = ไม่โพสต์
+    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => {
+      if (e.nolink) return log('⚠️ Facebook: ' + e.message + ' (ไม่มีแบนเนอร์สินค้า ใส่ลิงก์ในคอมเมนต์แทน) — ผูกได้ที่ปุ่ม "เพิ่มสินค้า" ตอนสร้าง Reels ในนามเพจนั้น');
+      throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300));
+    });
     const r = await finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
     // คอมเมนต์ลิงก์ไม่ได้ ≠ โพสต์พัง (คลิปขึ้นแล้ว) → แค่ log · fbComment หา reel ด้วยต้นแคปชัน → ส่งแคปชันที่โพสต์จริง
     if (r === 'ok' && clip.link) await fbComment(page, fbPage, { ...clip, caption: text }, log).catch((e) => log('⚠️ Facebook: คอมเมนต์ลิงก์ไม่ได้: ' + e.message.slice(0, 150)));
