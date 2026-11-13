@@ -75,6 +75,7 @@ function startRemote(d) {
         return json(res, 200, d.post(String(b.file || ''), pfs.length ? pfs : undefined, b.now === true));
       }
       if (u.pathname === '/api/auto') return json(res, 200, d.auto(!!b.on));
+      if (u.pathname === '/api/newsnow') return json(res, 200, d.newsNow());
       if (u.pathname === '/api/stop') { d.stop(); return json(res, 200, { ok: true }); }
       return json(res, 404, { error: 'ไม่มี' });
     } catch (e) { json(res, 500, { error: e.message }); }

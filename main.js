@@ -296,6 +296,8 @@ app.whenReady().then(() => require('./remote').startRemote({
     return { ok: true, name: c.name, platforms: pfs || 'ตามที่ติ๊กในหน้าโพสต์' };
   },
   auto: (on) => { newsAuto.cfg({ on }); newsAuto.log(`📱 มือถือ${on ? 'เปิด' : 'ปิด'}ข่าวอัตโนมัติ`); return { on }; },
+  // ทำข่าวรอบนี้ใหม่เดี๋ยวนี้ (รอบที่พังไปแล้ว) = ล้างรอบล่าสุด แล้วตัวจับเวลาของข่าวอัตโนมัติจะเริ่มเองภายใน 1 นาที
+  newsNow: () => { newsAuto.cfg({ lastSlot: '' }); newsAuto.log('📱 สั่งทำข่าวรอบนี้ใหม่'); return { ok: true }; },
   stop: () => job && job.stop(),
 }));
 ipcMain.handle('newsauto:cfg', (_e, set) => newsAuto.cfg(set || undefined));
