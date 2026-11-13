@@ -232,8 +232,11 @@ async function fbAffiliate(page, link, log) {
   const got = await Promise.race([head.waitFor({ timeout: 12000 }).then(() => 'dialog', () => null), popup.then((p) => p && 'popup')]);
   if (got !== 'dialog') {
     const p = await popup;
-    if (p && (await p.waitForURL(/shopee/i, { timeout: 5000 }).then(() => true, () => false))) {
-      await p.close().catch(() => {});
+    if (p) await p.waitForURL(/shopee/i, { timeout: 5000 }).catch(() => {});
+    // แท็บ shopee เก่ายังเปิดค้าง = เฟสโหลดซ้ำในแท็บเดิม ไม่เปิดใหม่ → ดูทุกแท็บที่เป็น shopee
+    const shp = page.context().pages().filter((x) => x !== page && /shopee\./i.test(x.url()));
+    if (shp.length) {
+      for (const x of shp) await x.close().catch(() => {});
       throw Object.assign(new Error('เพจนี้ยังไม่ได้ผูกบัญชี Shopee Affiliate'), { nolink: true });
     }
     await head.waitFor({ timeout: 1000 }); // ไม่ใช่กรณีข้างบน → ให้พังแบบเดิม
