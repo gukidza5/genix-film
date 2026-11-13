@@ -102,25 +102,40 @@ class Poster {
       const g = this.settings(), d = g.dest?.[clip.mode];
       const s = d ? { ...g, fbPage: d.fbPage || '', ytChannel: d.ytChannel || '' } : { ...g };
       // คลิปขายของลงเพจร้าน ข่าวลงเพจข่าว (kidza 12 พ.ย.: ช่องเพจเดียว สลับไปมาแล้วข่าวหลุดไปเพจร้าน)
-      if (clip.mode === 'shopee' && g.fbPageShop) s.fbPage = g.fbPageShop;
+      // หลายเพจร้าน (kidza 13 พ.ย.) = ช่องเพจร้านใส่ได้หลายบรรทัด คลิปขายของลงทุกเพจ · แต่ละเพจจำผลแยกใน posted["facebook|<เพจ>"] + เว้นช่วงของตัวเอง
+      const shopPages = clip.mode === 'shopee' ? String(g.fbPageShop || '').split(/\s+/).filter(Boolean) : [];
       const res = {};
       for (const pf of platforms || (d ? d.platforms || [] : Object.keys(s.platforms).filter((k) => s.platforms[k]))) {
-        if (clip.posted?.[pf] && !String(clip.posted[pf]).startsWith('error') && clip.posted[pf] !== 'dry') { res[pf] = clip.posted[pf]; continue; }
-        this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}`);
-        let page;
-        try {
-          const gapKey = pf === 'facebook' && s.fbPage ? 'facebook|' + s.fbPage : pf;
-          if (!s.dryRun && !now) await this.waitGap(gapKey, +s.gapMin || 0);
-          page = await this.page(LOGIN[pf], pf);
-          res[pf] = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage: s.fbPage, ytChannel: s.ytChannel });
-          this.log(res[pf] === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว`);
-        } catch (e) {
-          res[pf] = 'error: ' + e.message;
-          this.log(`❌ ${PLATFORMS[pf]}: ${e.message}`);
-          page?.bringToFront().catch(() => {});
+        const pages = pf === 'facebook' && shopPages.length ? shopPages : [s.fbPage];
+        const multi = pages.length > 1;
+        const done = (v) => v && !String(v).startsWith('error') && v !== 'dry';
+        const results = [], raw = []; // results = ค่าที่จำ (เวลา/error) · raw = ที่คืนให้คนเรียก ('ok'|'dry'|'error: …')
+        for (const [i, fbPage] of pages.entries()) {
+          const key = multi ? 'facebook|' + fbPage : pf;
+          // เพจแรกเคยโพสต์ตอนยังมีเพจเดียว (จำไว้ใต้ "facebook") = นับว่าโพสต์แล้ว
+          const prev = clip.posted?.[key] ?? (multi && i === 0 ? clip.posted?.[pf] : undefined);
+          if (done(prev)) { results.push(prev); raw.push(prev); continue; }
+          this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}${multi ? ' → ' + fbPage : ''}`);
+          let page, r;
+          try {
+            const gapKey = pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf;
+            if (!s.dryRun && !now) await this.waitGap(gapKey, +s.gapMin || 0);
+            page = await this.page(LOGIN[pf], pf);
+            r = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
+            this.log(r === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว${multi ? ' ' + fbPage : ''}`);
+          } catch (e) {
+            r = 'error: ' + e.message;
+            this.log(`❌ ${PLATFORMS[pf]}${multi ? ' ' + fbPage : ''}: ${e.message}`);
+            page?.bringToFront().catch(() => {});
+          }
+          const v = r === 'ok' ? new Date().toISOString() : r;
+          if (multi) this.mark(clip, key, v);
+          results.push(v); raw.push(r);
+          if (r === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf]: new Date().toISOString() }));
         }
-        this.mark(clip, pf, res[pf] === 'ok' ? new Date().toISOString() : res[pf]);
-        if (res[pf] === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [pf === 'facebook' && s.fbPage ? 'facebook|' + s.fbPage : pf]: new Date().toISOString() }));
+        // สถานะรวมที่หน้าโพสต์โชว์: พังสักเพจ = โชว์พัง (กดโพสต์ซ้ำจะข้ามเพจที่ขึ้นแล้ว)
+        res[pf] = raw.find((v) => String(v).startsWith('error')) ?? (raw.includes('ok') ? 'ok' : raw[raw.length - 1]);
+        if (results.length) this.mark(clip, pf, results.find((v) => !done(v)) ?? results[results.length - 1]);
       }
       return res;
     };

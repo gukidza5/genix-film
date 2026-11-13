@@ -36,7 +36,7 @@ button:disabled { opacity:.4; cursor:default; }
 .form { display:grid; grid-template-columns:1fr 2fr 1fr 1fr; gap:12px; align-items:end; }
 .form label { display:flex; flex-direction:column; gap:6px; color:var(--mut); font-size:13px; }
 .form .chk { flex-direction:row; align-items:center; grid-column:1/-1; color:var(--txt); }
-input, select { font:inherit; background:#0d1022; color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:9px 10px; }
+input, select, textarea { font:inherit; background:#0d1022; color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:9px 10px; }
 .actions { display:flex; justify-content:center; }
 .auto { border-color:#3b3f8f; }
 .row { display:flex; align-items:center; gap:14px; } .grow { flex:1; }

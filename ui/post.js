@@ -16,9 +16,9 @@ async function loadSettings() {
   $('dryRun').checked = s.dryRun; $('autopost').checked = s.autopost; $('gapMin').value = s.gapMin ?? 60; $('fbPage').value = s.fbPage || ''; $('fbPageShop').value = s.fbPageShop || '';
 }
 function saveSettings() {
-  genix.postSettings({ platforms: Object.fromEntries(Object.keys(PF).map((k) => [k, $('pf_' + k).checked])), dryRun: $('dryRun').checked, autopost: $('autopost').checked, gapMin: Math.max(0, +$('gapMin').value || 0), fbPage: $('fbPage').value.trim(), fbPageShop: $('fbPageShop').value.trim() });
+  genix.postSettings({ platforms: Object.fromEntries(Object.keys(PF).map((k) => [k, $('pf_' + k).checked])), dryRun: $('dryRun').checked, autopost: $('autopost').checked, gapMin: Math.max(0, +$('gapMin').value || 0), fbPage: $('fbPage').value.trim(), fbPageShop: $('fbPageShop').value.split(/\s+/).filter(Boolean).join('\n') });
 }
-document.querySelectorAll('.set input').forEach((x) => x.addEventListener('change', () => {
+document.querySelectorAll('.set input, .set textarea').forEach((x) => x.addEventListener('change', () => {
   if (x.id === 'autopost' && x.checked && !$('dryRun').checked && !confirm('เปิดโพสต์อัตโนมัติแบบโพสต์จริง? คลิปที่ทำเสร็จจะขึ้นทุกแพลตฟอร์มที่ติ๊กไว้ทันที')) x.checked = false;
   saveSettings();
 }));
