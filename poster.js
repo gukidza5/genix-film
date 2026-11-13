@@ -216,6 +216,45 @@ async function fbAffiliate(page, link, log) {
   log('🛒 Facebook: เพิ่มสินค้าแอฟฟิลิเอตแล้ว ' + link);
 }
 
+// คอมเมนต์ลิงก์สินค้าเป็นคอมเมนต์แรกในนามเพจ (kidza 13 พ.ย.) — เทสส่งจริงแล้วกับคลิปมัทฉะ:
+// หน้า Reels ของเพจ → ลิงก์ /reel/<id> เรียงใหม่→เก่า · เปิด reel → กดปุ่ม "แสดงความคิดเห็น"/"ความคิดเห็น, …" (แผงคอมเมนต์ขวา)
+// → กล่อง [role=textbox][aria-label^="แสดงความคิดเห็นในชื่อ <เพจ>"] · ต้องพิมพ์ด้วย keyboard.type (insertText กล่องไม่รับ ส่งไม่ออก)
+// สำเร็จ = กดส่งแล้วกล่องว่าง + ลิงก์โผล่ในแผงคอมเมนต์ · จับคู่ reel ด้วยต้นแคปชัน · มีลิงก์ในแผงแล้ว = ข้าม (ไม่คอมเมนต์ซ้ำ)
+async function fbComment(page, fbPage, clip, log) {
+  const text = '🛒 พิกัดสินค้า 👉 ' + clip.link;
+  const bare = clip.link.replace(/^https?:\/\//, '');
+  const key = (clip.caption.split('\n').find((l) => l.trim()) || '').replace(/\s+/g, ' ').trim().slice(0, 18);
+  const list = !fbPage ? 'https://www.facebook.com/me/reels/' : /profile\.php\?id=/.test(fbPage) ? fbPage + '&sk=reels_tab' : fbPage.replace(/\/?$/, '/reels/');
+  const vis = page.locator(':visible');
+  const bodyText = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
+  for (let tryN = 0; tryN < 3; tryN++) {
+    await sleep(tryN ? 20000 : 8000); // reel เพิ่งโพสต์ต้องรอประมวลผลก่อนโผล่ในหน้าเพจ
+    await page.goto(list, { waitUntil: 'domcontentloaded' });
+    await sleep(5000);
+    const reels = await page.evaluate(() => [...new Set([...document.querySelectorAll('a[href*="/reel/"]')].map((a) => a.href.split('?')[0]).filter((h) => /\/reel\/\d+/.test(h)))].slice(0, 6));
+    for (const url of reels) {
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await sleep(4000);
+      if (!key || !(await bodyText()).includes(key)) continue;
+      await page.locator('[role=button][aria-label="แสดงความคิดเห็น"], [role=button][aria-label^="ความคิดเห็น"]').and(vis).first().click({ timeout: 6000 }).catch(() => {});
+      await sleep(3000);
+      if ((await bodyText()).includes(bare)) { log('💬 Facebook: มีคอมเมนต์ลิงก์อยู่แล้ว ข้าม'); return true; }
+      const box = page.locator('[role=textbox][aria-label^="แสดงความคิดเห็น"]').and(vis).first();
+      await box.click({ timeout: 10000 });
+      await page.keyboard.type(text, { delay: 15 });
+      await sleep(1200);
+      await page.keyboard.press('Enter');
+      await sleep(6000);
+      const left = (await box.innerText().catch(() => '')).trim();
+      const ok = !left && (await bodyText()).includes(bare);
+      log(ok ? '💬 Facebook: คอมเมนต์ลิงก์สินค้าแล้ว ' + url : '⚠️ Facebook: ส่งคอมเมนต์ลิงก์ไม่ออก ' + url);
+      return ok;
+    }
+  }
+  log('⚠️ Facebook: หา reel ที่เพิ่งโพสต์ไม่เจอในหน้าเพจ ยังไม่ได้คอมเมนต์ลิงก์');
+  return false;
+}
+
 const DRIVERS = {
   // TikTok Studio (เทสจริง 9 พ.ย. หน้าอังกฤษ): อัป → ช่อง Description (DraftJS) → Add link: Select › Products › Next
   // → แท็บ Showcase products ค้นด้วยรหัสสินค้าจากลิงก์ → เลือก → Next → ชื่อบนคลิป (ตัด 30 ตัวให้เอง) → Add → Post
@@ -299,7 +338,10 @@ const DRIVERS = {
     await until(post, 'ปุ่มโพสต์');
     // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
     if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => { throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300)); });
-    return finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
+    const r = await finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
+    // คอมเมนต์ลิงก์ไม่ได้ ≠ โพสต์พัง (คลิปขึ้นแล้ว) → แค่ log
+    if (r === 'ok' && clip.link) await fbComment(page, fbPage, clip, log).catch((e) => log('⚠️ Facebook: คอมเมนต์ลิงก์ไม่ได้: ' + e.message.slice(0, 150)));
+    return r;
   },
 
   // YouTube Studio (9 พ.ย.): youtube.com/upload → เลือกไฟล์ → ชื่อ (บรรทัดแรกแคปชัน ≤95) + คำอธิบาย → ไม่ได้ทำเพื่อเด็ก
@@ -357,4 +399,4 @@ const DRIVERS = {
   },
 };
 
-module.exports = { Poster, listClips, PLATFORMS, saveClipMeta };
+module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment };
