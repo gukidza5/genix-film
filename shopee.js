@@ -37,7 +37,8 @@ const T = {
   },
   style: {
     ugc: 'realistic smartphone UGC review footage, natural light, handheld',
-    review: 'realistic vertical smartphone footage filmed by a Thai woman in her own real home, POV of her hands only (manicured nails), demonstrating the product step by step on a real table, natural daylight, slightly handheld, no face',
+    // เทสแรก 13 พ.ย.: ได้คนยืนหลังโต๊ะเห็นลำตัว + มือ POV โผล่ซ้อน → ย้ำมุมก้มมองลงจากสายตาคนถ่าย ไม่มีใครยืนในเฟรม
+    review: 'first-person POV smartphone footage looking down at a real table in a Thai home, only her own forearms and hands (manicured nails) enter from the bottom edge of the frame, nobody standing in the frame, no torso, no face, demonstrating the product step by step, natural daylight, slightly handheld',
     live: 'Thai live-selling stream look, ring light, seller at a table',
     studio: 'clean studio product photography, soft box lighting',
     cinematic: 'cinematic commercial, shallow depth of field, dramatic lighting',
@@ -236,6 +237,7 @@ class ShopeePipeline extends Pipeline {
 ${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza 13 พ.ย. ตามคลิปตัวอย่าง): ผู้หญิงเล่าเป็นประสบการณ์ตัวเองแบบเพื่อนเล่าให้ฟัง ใช้ "เรา" ลงท้าย "ค่ะ/นะคะ" ไล่เรื่อง: เปิด "รีวิว<ชื่อสินค้าสั้นๆ>" → ปัญหาที่เจอก่อนซื้อ → ตัดสินใจซื้อ/แอบลุ้นว่าจะดีไหม → ลองใช้จริง ชี้จุดเด่นทีละข้อ → สรุปว่าตรงปก ใช้งานได้จริง แนะนำใครที่... → ปิด "พิกัดแปะไว้ให้แล้ว"
 - ทุกฉากเห็นแค่มือกำลังทำอะไรกับสินค้าจริงๆ (แกะกล่อง ประกอบ ใส่ของ เปิด-ปิด กด ลองใช้ เทียบก่อน-หลัง) ห้ามเห็นหน้า แต่ละฉากเป็นการกระทำคนละอย่าง ไม่ใช่ถือสินค้าเฉยๆ
 - line แต่ละฉากต่อกันเป็นเรื่องเดียวลื่นๆ ไม่ขึ้นต้นใหม่ทุกฉาก
+- image_prompt ทุกฉาก: มุมก้มมองโต๊ะจากสายตาคนถ่าย มือเข้ามาจากขอบล่าง ห้ามมีคนยืนในเฟรม ห้ามมีไอคอน/ป้าย/หน้าจอ/ตัวหนังสือ (ฉากชวนกดตะกร้าให้ถือสินค้าโชว์เฉยๆ)
 ` : ''}- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
 - line = บทพูดไทยไม่เกิน 20 คำ, overlay = คำโปรยตัวใหญ่บนจอ 2-5 คำ
 - image_prompt และ motion เป็นภาษาอังกฤษ ฉากทุกฉากอยู่ที่ ${T.scene[p.scene]}
