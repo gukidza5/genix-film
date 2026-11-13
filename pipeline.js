@@ -32,7 +32,8 @@ const hairOf = (look) => (look.match(/[^,]*(hair|bald|ponytail|bun|braid)[^,]*/i
 // โหมดการ์ตูน: พรอมต์ทั้งหมดเขียนแบบหนังคนจริง → สลับคำเป็นแอนิเมชัน 3D ตอนส่งเข้า ComfyUI
 const toon = (s) => s.replace(/photo-?realistic,?\s*/gi, '').replace(/\bphoto\b/gi, 'image').replace(/(TV drama |cinematic )?film still/gi, 'animated movie frame')
   + ', 3D animated cartoon style like a Pixar movie, stylized cartoon characters with big expressive eyes, soft colorful lighting';
-const FILM = 'three-quarter angle, eyes looking at the other person not at the camera, shallow depth of field with blurred background, soft cinematic lighting, TV drama film still';
+// ลุคละครไทยสมจริง (kidza 13 พ.ย. ตัวอย่าง YouTube ตัดรักคืนวัย): ห้องสว่างแสงธรรมชาติอุ่นๆ หน้าคมผิวเนียนเป็นธรรมชาติ ฉากหลังเบลอนุ่ม ไม่มืดคอนทราสต์จัด
+const FILM = 'three-quarter angle, eyes looking at the other person not at the camera, high-end Thai TV drama film still, bright airy scene with soft warm natural window light, 85mm lens, shallow depth of field with creamy blurred background, sharp focus on the face, natural clean skin texture, gentle color grade, cozy detailed real Thai location';
 function framePrompt(s, spk, chars, locs = []) {
   if (s.line && spk) {
     // บทเก่าไม่มี setting → หาโลเคชันที่ image_prompt อ้างถึง (ใช้ image_prompt ตรง ๆ คนพูดจะโผล่ซ้ำเป็นคนที่สองข้างหลัง)
@@ -220,7 +221,7 @@ class Pipeline {
     // 3 รูปนักแสดง
     for (const [i, c] of p.cast.characters.entries()) {
       this.step(1, 2, `${c.name} (${i + 1}/${p.cast.characters.length})`);
-      c.img = await this.media(`Imagine a photorealistic cinematic portrait of ${c.look}, plain background, vertical 9:16`, 'image', this.f('cast', `${i + 1}.jpg`), 240000);
+      c.img = await this.media(`Imagine a photorealistic portrait photo of ${c.look}, soft natural window light, sharp detailed face, natural clean skin texture, plain light background, vertical 9:16`, 'image', this.f('cast', `${i + 1}.jpg`), 240000);
       this.save();
       if (c.img) this.emit('asset', { kind: 'cast', file: c.img, name: c.name });
     }
@@ -278,7 +279,7 @@ image_prompt และ motion ต้องเป็นภาษาอังก�
         const inShot = p.cast.characters.filter((c) => s.image_prompt.includes(c.look.slice(0, 30)) || (s.action || '').includes(c.name));
         const refs = (s.line && spk ? [spk] : inShot.length ? inShot : [spk || lst]).map((c) => c?.img).filter(Boolean).slice(0, 3);
         // ฉากมีบทพูด: ให้คนพูดเด่นหน้ากล้อง ไม่งั้นตอนทำปากขยับ (S2V) จะไปขยับปากอีกคนในภาพ
-        s.frame = await this.media(`Imagine ${framePrompt(s, spk, p.cast.characters, p.cast.locations)}, cinematic film still, dramatic lighting, vertical 9:16`, 'image', this.f(`ep${ep}`, `s${i + 1}.jpg`), 240000, refs);
+        s.frame = await this.media(`Imagine ${framePrompt(s, spk, p.cast.characters, p.cast.locations)}, photorealistic, ultra detailed, vertical 9:16`, 'image', this.f(`ep${ep}`, `s${i + 1}.jpg`), 240000, refs);
         this.save();
         if (s.frame) this.emit('asset', { kind: 'frame', file: s.frame, name: `EP${ep} ฉาก ${i + 1}` });
       }
