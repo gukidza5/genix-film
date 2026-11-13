@@ -121,24 +121,35 @@ class Poster {
           const prev = clip.posted?.[key] ?? (multi && i === 0 ? clip.posted?.[pf] : undefined);
           if (done(prev)) { results.push(prev); raw.push(prev); continue; }
           this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}${multi ? ' → ' + fbPage : ''}`);
-          let page, r;
-          try {
-            const gapKey = pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf;
+          const gapKey = pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf;
+          // รอเว้นช่วงนอกคิว (13 พ.ย.: คลิปร้านรอ cobbashop 20 นาที ข่าวที่ไปคนละเพจต้องรอตาม) · ใช้ Chrome ทีละโพสต์ผ่าน excl()
+          // ถึงคิวแล้วเช็คซ้ำ: เพจนี้ลงไปแล้ว = ข้าม · มีโพสต์อื่นลงเพจเดียวกันระหว่างรอ = กลับไปรอใหม่
+          let out;
+          for (;;) {
             if (!s.dryRun && !now) await this.waitGap(gapKey, +s.gapMin || 0);
-            const after = fresh()[key]; // ระหว่างรอ มีรอบอื่นลงเพจนี้ไปแล้ว = ข้าม
-            if (done(after)) { this.log(`⏭️ ${PLATFORMS[pf]}: ${fbPage || ''} ลงไปแล้วระหว่างรอ ข้าม`); results.push(after); raw.push(after); continue; }
-            page = await this.page(LOGIN[pf], pf);
-            r = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
-            this.log(r === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว${multi ? ' ' + fbPage : ''}`);
-          } catch (e) {
-            r = 'error: ' + e.message;
-            this.log(`❌ ${PLATFORMS[pf]}${multi ? ' ' + fbPage : ''}: ${e.message}`);
-            page?.bringToFront().catch(() => {});
+            out = await this.excl(async () => {
+              const after = fresh()[key];
+              if (done(after)) return { skip: after };
+              if (!s.dryRun && !now && this.gapLeft(gapKey, +s.gapMin || 0) > 0) return { again: true };
+              let page, r;
+              try {
+                page = await this.page(LOGIN[pf], pf);
+                r = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage, ytChannel: s.ytChannel });
+                this.log(r === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว${multi ? ' ' + fbPage : ''}`);
+              } catch (e) {
+                r = 'error: ' + e.message;
+                this.log(`❌ ${PLATFORMS[pf]}${multi ? ' ' + fbPage : ''}: ${e.message}`);
+                page?.bringToFront().catch(() => {});
+              }
+              const v = r === 'ok' ? new Date().toISOString() : r;
+              this.mark(clip, key, v);
+              if (r === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [gapKey]: v }));
+              return { r, v };
+            });
+            if (!out.again) break;
           }
-          const v = r === 'ok' ? new Date().toISOString() : r;
-          if (multi) this.mark(clip, key, v);
-          results.push(v); raw.push(r);
-          if (r === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [pf === 'facebook' && fbPage ? 'facebook|' + fbPage : pf]: new Date().toISOString() }));
+          if (out.skip) { this.log(`⏭️ ${PLATFORMS[pf]}: ${fbPage || ''} ลงไปแล้ว ข้าม`); results.push(out.skip); raw.push(out.skip); continue; }
+          results.push(out.v); raw.push(out.r);
         }
         // สถานะรวมที่หน้าโพสต์โชว์: พังสักเพจ = โชว์พัง (กดโพสต์ซ้ำจะข้ามเพจที่ขึ้นแล้ว)
         res[pf] = raw.find((v) => String(v).startsWith('error')) ?? (raw.includes('ok') ? 'ok' : raw[raw.length - 1]);
@@ -148,9 +159,16 @@ class Poster {
     };
     // busy = คิวโพสต์ที่ยังไม่จบ (รวมที่รอเว้นช่วง) · main.js ไม่รีแอปตอนโค้ดเปลี่ยนถ้ายังโพสต์อยู่ (13 พ.ย. รีกลางโพสต์ คลิปขึ้นแต่ไม่ได้คอมเมนต์)
     this.busy = (this.busy || 0) + 1;
-    const done = () => { this.busy--; };
-    return (this.chain = this.chain.then(run, run).finally(done));
+    return run().finally(() => { this.busy--; });
   }
+
+  // ใช้ Chrome ทีละงาน (แท็บเดียวกันแย่งกันไม่ได้)
+  excl(fn) {
+    const p = this.chain.then(fn);
+    this.chain = p.catch(() => {});
+    return p;
+  }
+  gapLeft(pf, gapMin) { const last = readJson(this.lastFile, {})[pf]; return last ? Date.parse(last) + gapMin * 60000 - Date.now() : 0; }
 
   mark(clip, pf, v) {
     const f = path.join(clip.dir, 'posted.json');
