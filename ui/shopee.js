@@ -210,3 +210,10 @@ $('btnMeta').onclick = $('navMeta').onclick = () => genix.showMeta();
 
 renderBars(-1); setRunning(false); loadProjects();
 checkMeta(); setInterval(checkMeta, 15000);
+
+// แนวรีวิวเล่าเอง (kidza 13 พ.ย.): เห็นแค่มือ เสียงผู้หญิง 8 ฉากสั้นๆ ตามคลิปตัวอย่าง
+$('style').addEventListener('change', () => {
+  if ($('style').value !== 'review') return;
+  $('presence').value = 'hands'; $('voice').value = 'female'; $('scenes').value = 8;
+  ['presence', 'voice', 'scenes'].forEach((id) => $(id).dispatchEvent(new Event('change')));
+});

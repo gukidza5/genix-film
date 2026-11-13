@@ -37,6 +37,7 @@ const T = {
   },
   style: {
     ugc: 'realistic smartphone UGC review footage, natural light, handheld',
+    review: 'realistic vertical smartphone footage filmed by a Thai woman in her own real home, POV of her hands only (manicured nails), demonstrating the product step by step on a real table, natural daylight, slightly handheld, no face',
     live: 'Thai live-selling stream look, ring light, seller at a table',
     studio: 'clean studio product photography, soft box lighting',
     cinematic: 'cinematic commercial, shallow depth of field, dramatic lighting',
@@ -217,7 +218,10 @@ class ShopeePipeline extends Pipeline {
 - ฉากแรกต้องเป็น hook ทำให้คนหยุดเลื่อนภายใน 2 วิ ฉากสุดท้ายชวน${p.shop === 'tiktok' ? 'กดตะกร้าเหลือง (คลิปลง TikTok Shop)' : p.shop === 'facebook' ? 'จิ้มป้ายสินค้าในคลิป (คลิปลง Facebook Reels)' : 'กดตะกร้า/ลิงก์'}
 - โทน: ${T.tone[p.tone]} · ระดับภาษา: ${T.register[p.register]} · เขียนบทพูดเป็น${T.accent[p.accent]} · ${voice}
 - ผู้แสดง: ${T.presence[p.presence]}
-- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
+${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza 13 พ.ย. ตามคลิปตัวอย่าง): ผู้หญิงเล่าเป็นประสบการณ์ตัวเองแบบเพื่อนเล่าให้ฟัง ใช้ "เรา" ลงท้าย "ค่ะ/นะคะ" ไล่เรื่อง: เปิด "รีวิว<ชื่อสินค้าสั้นๆ>" → ปัญหาที่เจอก่อนซื้อ → ตัดสินใจซื้อ/แอบลุ้นว่าจะดีไหม → ลองใช้จริง ชี้จุดเด่นทีละข้อ → สรุปว่าตรงปก ใช้งานได้จริง แนะนำใครที่... → ปิด "พิกัดแปะไว้ให้แล้ว"
+- ทุกฉากเห็นแค่มือกำลังทำอะไรกับสินค้าจริงๆ (แกะกล่อง ประกอบ ใส่ของ เปิด-ปิด กด ลองใช้ เทียบก่อน-หลัง) ห้ามเห็นหน้า แต่ละฉากเป็นการกระทำคนละอย่าง ไม่ใช่ถือสินค้าเฉยๆ
+- line แต่ละฉากต่อกันเป็นเรื่องเดียวลื่นๆ ไม่ขึ้นต้นใหม่ทุกฉาก
+` : ''}- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
 - line = บทพูดไทยไม่เกิน 20 คำ, overlay = คำโปรยตัวใหญ่บนจอ 2-5 คำ
 - image_prompt และ motion เป็นภาษาอังกฤษ ฉากทุกฉากอยู่ที่ ${T.scene[p.scene]}
 - product_look = บรรยายหน้าตาสินค้าในรูปเป็นภาษาอังกฤษละเอียดพอให้วาดซ้ำได้, presenter = หน้าตาผู้แสดงภาษาอังกฤษ (ไม่มีให้ใส่ "")
