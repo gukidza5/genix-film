@@ -146,7 +146,10 @@ class Poster {
       }
       return res;
     };
-    return (this.chain = this.chain.then(run, run));
+    // busy = คิวโพสต์ที่ยังไม่จบ (รวมที่รอเว้นช่วง) · main.js ไม่รีแอปตอนโค้ดเปลี่ยนถ้ายังโพสต์อยู่ (13 พ.ย. รีกลางโพสต์ คลิปขึ้นแต่ไม่ได้คอมเมนต์)
+    this.busy = (this.busy || 0) + 1;
+    const done = () => { this.busy--; };
+    return (this.chain = this.chain.then(run, run).finally(done));
   }
 
   mark(clip, pf, v) {

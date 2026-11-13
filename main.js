@@ -246,7 +246,7 @@ if (fs.existsSync(path.join(__dirname, '.git'))) {
       // ไฟล์ที่กำลังแก้ค้างครึ่งๆ = อย่าเพิ่งรี (11 พ.ย. รีตอนไฟล์พังแล้วแอปเปิดไม่ขึ้น) รอแก้เสร็จค่อยรี
       const bad = fs.readdirSync(__dirname).filter((f) => f.endsWith('.js')).find((f) => { try { require('vm').compileFunction(fs.readFileSync(path.join(__dirname, f), 'utf8')); return false; } catch { return true; } });
       if (bad) { t = setTimeout(again, 15000); return; }
-      if (newsBusy || job) { t = setTimeout(again, 60000); return; } // รอหนัง/ข่าวที่ทำอยู่จบก่อน ไม่ทิ้งฉากที่เจนค้าง
+      if (newsBusy || job || poster.busy > 0) { t = setTimeout(again, 60000); return; } // รอหนัง/ข่าว/คิวโพสต์ที่ทำอยู่จบก่อน ไม่ทิ้งงานค้าง
       send('log', `🔄 โค้ดเปลี่ยน (${f}) รีสตาร์ทแอปเอง งานค้างจะทำต่ออัตโนมัติ`);
       app.quitting = true; app.relaunch(); app.exit(0);
     }, 8000);
