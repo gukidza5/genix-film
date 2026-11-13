@@ -287,11 +287,12 @@ async function fbComment(page, fbPage, clip, log) {
   const list = !fbPage ? 'https://www.facebook.com/me/reels/' : /profile\.php\?id=/.test(fbPage) ? fbPage + '&sk=reels_tab' : fbPage.replace(/\/?$/, '/reels/');
   const vis = page.locator(':visible');
   const bodyText = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
-  for (let tryN = 0; tryN < 3; tryN++) {
+  for (let tryN = 0; tryN < 6; tryN++) {
     await sleep(tryN ? 20000 : 8000); // reel เพิ่งโพสต์ต้องรอประมวลผลก่อนโผล่ในหน้าเพจ
     await page.goto(list, { waitUntil: 'domcontentloaded' });
     await sleep(5000);
-    const reels = await page.evaluate(() => [...new Set([...document.querySelectorAll('a[href*="/reel/"]')].map((a) => a.href.split('?')[0]).filter((h) => /\/reel\/\d+/.test(h)))].slice(0, 6));
+    // ดูแค่ 2 อันบนสุด (กันคลิปปักหมุด) — ยังไม่ขึ้น = รอแล้วโหลดใหม่ ไม่ไล่เปิดคลิปเก่า (kidza 13 พ.ย.)
+    const reels = await page.evaluate(() => [...new Set([...document.querySelectorAll('a[href*="/reel/"]')].map((a) => a.href.split('?')[0]).filter((h) => /\/reel\/\d+/.test(h)))].slice(0, 2));
     for (const url of reels) {
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       await sleep(4000);
