@@ -64,11 +64,12 @@ class Poster {
   // เว้นช่วงโพสต์ต่อเว็บ (kidza 9 พ.ย.: ไม่เอาโพสต์ติดกัน) — จำเวลาโพสต์ล่าสุดไว้ในไฟล์ข้าง post.json
   // shortcut: รอในแอป ถ้าปิดแอประหว่างรอ คลิปนั้นจะไม่ถูกโพสต์ (ไปกดโพสต์เองในหน้าโพสต์)
   get lastFile() { return path.join(path.dirname(this.settingsFile), 'lastpost.json'); }
+  // เฟสนับแยกต่อเพจ (kidza 13 พ.ย.: ข่าวลงเพจข่าวแล้วคลิปเพจร้านโดนรอตาม)
   async waitGap(pf, gapMin) {
     const last = readJson(this.lastFile, {})[pf];
     const wait = last ? Date.parse(last) + gapMin * 60000 - Date.now() : 0;
     if (wait <= 0) return;
-    this.log(`⏳ ${PLATFORMS[pf]}: รอ ${Math.ceil(wait / 60000)} นาที (เว้นห่างโพสต์ก่อน ${gapMin} นาที) จะโพสต์ราว ${new Date(Date.now() + wait).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`);
+    this.log(`⏳ ${PLATFORMS[pf.split('|')[0]]}: รอ ${Math.ceil(wait / 60000)} นาที (เว้นห่างโพสต์ก่อน ${gapMin} นาที) จะโพสต์ราว ${new Date(Date.now() + wait).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`);
     await sleep(wait);
   }
   saveSettings(s) { fs.writeFileSync(this.settingsFile, JSON.stringify({ ...this.settings(), ...s }, null, 2)); return this.settings(); }
@@ -108,7 +109,8 @@ class Poster {
         this.log(`📤 ${PLATFORMS[pf]}: ${clip.name}`);
         let page;
         try {
-          if (!s.dryRun && !now) await this.waitGap(pf, +s.gapMin || 0);
+          const gapKey = pf === 'facebook' && s.fbPage ? 'facebook|' + s.fbPage : pf;
+          if (!s.dryRun && !now) await this.waitGap(gapKey, +s.gapMin || 0);
           page = await this.page(LOGIN[pf], pf);
           res[pf] = await DRIVERS[pf](page, clip, { dryRun: s.dryRun, log: this.log, fbPage: s.fbPage, ytChannel: s.ytChannel });
           this.log(res[pf] === 'dry' ? `🧪 ${PLATFORMS[pf]}: ทำครบแล้ว หยุดรอให้กดโพสต์เองในแท็บนั้น (โหมดทดลอง)` : `✅ ${PLATFORMS[pf]}: โพสต์แล้ว`);
@@ -118,7 +120,7 @@ class Poster {
           page?.bringToFront().catch(() => {});
         }
         this.mark(clip, pf, res[pf] === 'ok' ? new Date().toISOString() : res[pf]);
-        if (res[pf] === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [pf]: new Date().toISOString() }));
+        if (res[pf] === 'ok') fs.writeFileSync(this.lastFile, JSON.stringify({ ...readJson(this.lastFile, {}), [pf === 'facebook' && s.fbPage ? 'facebook|' + s.fbPage : pf]: new Date().toISOString() }));
       }
       return res;
     };
