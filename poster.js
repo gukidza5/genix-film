@@ -223,9 +223,21 @@ async function finish(page, re, what, dryRun) {
 // → หาช่องจาก <label> ที่ขึ้นต้นด้วย "URL" ทั้งหน้า · ปุ่มต้องชื่อ "บันทึก" ตรงตัว (มีปุ่ม "บันทึกเป็นฉบับร่าง" อยู่ด้วย ห้ามกดผิด)
 async function fbAffiliate(page, link, log) {
   const vis = page.locator(':visible');
-  await page.getByText(/^(เพิ่มสินค้า|Add products?)$/i).and(vis).first().click({ timeout: 15000 });
+  const popup = page.context().waitForEvent('page', { timeout: 12000 }).catch(() => null);
+  // ไม่มีปุ่มเลย = เพจนี้ใช้แอฟฟิลิเอตไม่ได้ (13 พ.ย. เพจ 100082049217866)
+  await page.getByText(/^(เพิ่มสินค้า|Add products?)$/i).and(vis).first().click({ timeout: 15000 })
+    .catch(() => { throw Object.assign(new Error('เพจนี้ไม่มีปุ่ม "เพิ่มสินค้า" (ยังใช้แอฟฟิลิเอตไม่ได้)'), { nolink: true }); });
   const head = page.locator('[role=dialog][aria-label="เพิ่มสินค้าแอฟฟิลิเอต"], [role=dialog][aria-label*="affiliate" i]').and(vis).last();
-  await head.waitFor({ timeout: 10000 });
+  // เพจที่ยังไม่ผูกบัญชี Shopee Affiliate (13 พ.ย. 4/6 เพจ): เฟสเปิดแท็บล็อกอิน shopee แทนหน้าต่าง
+  const got = await Promise.race([head.waitFor({ timeout: 12000 }).then(() => 'dialog', () => null), popup.then((p) => p && 'popup')]);
+  if (got !== 'dialog') {
+    const p = await popup;
+    if (p && (await p.waitForURL(/shopee/i, { timeout: 5000 }).then(() => true, () => false))) {
+      await p.close().catch(() => {});
+      throw Object.assign(new Error('เพจนี้ยังไม่ได้ผูกบัญชี Shopee Affiliate'), { nolink: true });
+    }
+    await head.waitFor({ timeout: 1000 }); // ไม่ใช่กรณีข้างบน → ให้พังแบบเดิม
+  }
   const input = page.locator('label').filter({ hasText: /^\s*URL/ }).locator('input[type=text], input[type=url], input:not([type])').and(vis).first();
   await input.click({ timeout: 10000 });
   await input.fill(link);
@@ -359,7 +371,11 @@ const DRIVERS = {
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
     // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
-    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => { throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300)); });
+    // ยังไม่ผูก Affiliate = โพสต์ต่อ ลิงก์ไปอยู่คอมเมนต์แรก (ลิงก์ย่อเป็นลิงก์แอฟฟิลิเอตของเราอยู่แล้ว) · พังแบบอื่น = ไม่โพสต์
+    if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => {
+      if (e.nolink) return log('⚠️ Facebook: ' + e.message + ' (ไม่มีแบนเนอร์สินค้า ใส่ลิงก์ในคอมเมนต์แทน) — ผูกได้ที่ปุ่ม "เพิ่มสินค้า" ตอนสร้าง Reels ในนามเพจนั้น');
+      throw new Error('เพิ่มสินค้าแอฟฟิลิเอตไม่ได้: ' + e.message.slice(0, 300));
+    });
     const r = await finish(page, /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i, 'โพสต์', dryRun);
     // คอมเมนต์ลิงก์ไม่ได้ ≠ โพสต์พัง (คลิปขึ้นแล้ว) → แค่ log
     if (r === 'ok' && clip.link) await fbComment(page, fbPage, clip, log).catch((e) => log('⚠️ Facebook: คอมเมนต์ลิงก์ไม่ได้: ' + e.message.slice(0, 150)));
