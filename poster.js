@@ -77,6 +77,26 @@ function fbCaption(caption, seed, hasLink) {
   return out;
 }
 
+// ป้าย AI (kidza 14 พ.ย.): คลิปเราภาพ/เสียง AI สมจริง เฟส/TikTok บังคับให้ติดเอง · YouTube ติ๊ก "เนื้อหาดัดแปลง" ใน driver อยู่แล้ว
+// เฟส = [role=switch] "เพิ่มป้าย AI" หน้าตั้งค่า · TikTok = data-e2e="aigc_container" (ดูหน้าจริงผ่าน CDP 14 พ.ย.)
+// ติ๊กไม่ได้ = log เตือนแล้วโพสต์ต่อ
+async function aiLabel(page, pf, log) {
+  const sw = pf === 'facebook'
+    ? page.locator('[role=switch]').filter({ hasText: /ป้าย AI|AI label|AI info/i }).first()
+    : page.locator('[data-e2e="aigc_container"] .Switch__content').first();
+  try {
+    // TikTok: สวิตช์ซ่อนใต้ "Show more"
+    if (pf === 'tiktok' && !(await sw.isVisible().catch(() => false))) await page.getByText(/^(Show more|แสดงเพิ่มเติม)$/i).first().click({ timeout: 5000 }).catch(() => {});
+    await sw.waitFor({ timeout: 10000 });
+    if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click();
+    await sleep(1500);
+    // TikTok อาจเด้งหน้าต่างยืนยันเปิดป้าย
+    await page.getByRole('button', { name: /^(Turn on|เปิด|Confirm|ยืนยัน|OK|ตกลง)$/i }).and(page.locator(':visible')).first().click({ timeout: 2000 }).catch(() => {});
+    const on = (await sw.getAttribute('aria-checked')) === 'true';
+    log(on ? `🤖 ${PLATFORMS[pf]}: ติดป้าย AI แล้ว` : `⚠️ ${PLATFORMS[pf]}: กดป้าย AI แล้วไม่ติด`);
+  } catch (e) { log(`⚠️ ${PLATFORMS[pf]}: ไม่เจอสวิตช์ป้าย AI (${e.message.slice(0, 80)})`); }
+}
+
 async function variant(file, seed) {
   let h = 2166136261;
   for (const c of seed + path.basename(file)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
@@ -402,6 +422,8 @@ const DRIVERS = {
     // รออัปโหลดเสร็จก่อนกดโพสต์
     await page.getByText(/อัปโหลดแล้ว|Uploaded/i).first().waitFor({ timeout: 600000 }).catch(() => {});
     await ttPopups(page);
+    await aiLabel(page, 'tiktok', log);
+    await ttPopups(page);
     return finish(page, /^(โพสต์|Post)$/i, 'โพสต์', dryRun);
   },
 
@@ -443,6 +465,7 @@ const DRIVERS = {
     await typeInto(page, box, text);
     const post = page.getByRole('button', { name: /^(โพสต์|Post|เผยแพร่|Publish|แชร์|Share)$/i }).and(page.locator(':visible')).first();
     await until(post, 'ปุ่มโพสต์');
+    await aiLabel(page, 'facebook', log);
     // แนบไม่ได้ = ไม่โพสต์ (โพสต์ไปไม่มีลิงก์ก็ไม่ได้ค่าคอม) ให้หน้าโพสต์ขึ้น "พัง" แล้วกดใหม่/โพสต์เอง
     // ยังไม่ผูก Affiliate = โพสต์ต่อ ลิงก์ไปอยู่คอมเมนต์แรก (ลิงก์ย่อเป็นลิงก์แอฟฟิลิเอตของเราอยู่แล้ว) · พังแบบอื่น = ไม่โพสต์
     if (clip.link) await fbAffiliate(page, clip.link, log).catch((e) => {
@@ -510,4 +533,4 @@ const DRIVERS = {
   },
 };
 
-module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment, variant, fbCaption };
+module.exports = { Poster, listClips, PLATFORMS, saveClipMeta, fbComment, variant, fbCaption, aiLabel };
