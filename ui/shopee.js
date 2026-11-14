@@ -62,7 +62,7 @@ function warn(msg, field) {
 
 function clearForm() {
   product = {};
-  for (const k of ['url', 'title', 'price', 'note']) $(k).value = '';
+  for (const k of ['url', 'title', 'price', 'note', 'refUrl']) $(k).value = '';
   setPic('');
 }
 
@@ -120,6 +120,9 @@ async function start(dir, saved) {
     opts.shop = SHOP;
     opts.voicetype = opts.voice === 'male' ? 'male' : 'female';
     opts.note = $('note').value.trim();
+    const ref = $('refUrl').value.trim();
+    if (ref && !/^https?:\/\/\S+$/i.test(ref)) return warn('ลิงก์คลิปต้นแบบต้องขึ้นต้นด้วย http', 'refUrl');
+    if (ref) opts.refUrl = ref;
     if (face && opts.presence !== 'hands' && opts.presence !== 'none') opts.face = face;
     opts.product = { ...product, url: product.url || $('url').value.trim(), title: $('title').value.trim(), price: $('price').value.trim() };
     if (!opts.product.title) return warn('ใส่ชื่อสินค้าก่อน (วางลิงก์แล้วกดดึงข้อมูล หรือพิมพ์เอง)', 'url');

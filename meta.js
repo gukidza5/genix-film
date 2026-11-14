@@ -139,7 +139,7 @@ function engine(set) {
 async function gemini(prompt, files = [], timeoutMs = 180000) {
   const key = geminiKey();
   if (!key) throw new Error('ไม่มีคีย์ Gemini — กด 🔑 มุมซ้ายล่างของแอปเพื่อใส่คีย์ หรือสลับไปใช้ Meta');
-  const mime = { '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+  const mime = { '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.mp4': 'video/mp4' }; // mp4 = คลิปต้นแบบย่อแล้ว (inline ไม่เกิน ~20MB)
   const parts = files.filter((f) => mime[path.extname(f).toLowerCase()] && fs.existsSync(f))
     .map((f) => ({ inline_data: { mime_type: mime[path.extname(f).toLowerCase()], data: fs.readFileSync(f).toString('base64') } }));
   parts.push({ text: `${prompt}\n\nตอบเป็น JSON ล้วน ไม่ต้องมี ${START}/${END} ไม่ต้องมีคำอธิบาย` });

@@ -4,7 +4,22 @@ const fs = require('fs');
 const path = require('path');
 const { BrowserWindow, session } = require('electron');
 const { Pipeline, run, dur } = require('./pipeline');
-const { geminiImage } = require('./meta');
+const { geminiImage, gemini } = require('./meta');
+
+// โคลนคลิปดัง (kidza 14 พ.ย.): ลิงก์ TikTok/Reels/Shorts → yt-dlp โหลด → ย่อ 360p ≤60 วิ → Gemini ดูทั้งคลิป แกะโครง (ฮุก/ช็อต/มุมกล้อง/จังหวะ/ตัวหนังสือ/ปิดท้าย)
+// โครงไปเข้า scriptPrompt ให้บทสินค้าเราเดินตาม · ไม่ลอกคำพูด/ภาพของเขา
+async function refAnalyze(url, dir, log) {
+  const raw = path.join(dir, 'ref.mp4'), small = path.join(dir, 'ref_small.mp4');
+  if (!fs.existsSync(raw)) {
+    log('🔗 โหลดคลิปต้นแบบ: ' + url);
+    await run('python', ['-m', 'yt_dlp', '-q', '--no-playlist', '--download-sections', '*0-60', '-f', 'bv*[height<=720]+ba/b[height<=720]/b', '--merge-output-format', 'mp4', '-o', raw, url]);
+  }
+  if (!fs.existsSync(small)) await run('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-t', '60', '-vf', 'scale=-2:360,fps=15', '-c:v', 'libx264', '-crf', '32', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '48k', '-ac', '1', small]);
+  if (fs.statSync(small).size > 18e6) throw new Error('คลิปต้นแบบใหญ่เกินส่ง Gemini');
+  log('🔍 Gemini แกะโครงคลิปต้นแบบ');
+  return gemini(`ดูคลิปขายของ/รีวิวที่แนบ แล้วแกะ "สูตร" ที่ทำให้คลิปนี้ปัง เพื่อเอาไปทำคลิปสินค้าอื่นตามแบบ (ไม่ลอกคำพูดตรงๆ)
+ตอบ JSON: {"summary":"สรุป 1-2 ประโยคว่าคลิปนี้ขายยังไง","hook":"2 วิแรกทำอะไร พูด/ขึ้นตัวหนังสือแนวไหน","tone":"โทนเสียง/อารมณ์คนพูด","voice":"มีเสียงพูดไหม ผู้หญิงหรือผู้ชาย เล่าแบบไหน","presence":"เห็นหน้าคน/เห็นแค่มือ/ไม่มีคน","shots":[{"sec":"0-2","shot":"ภาพอะไร มุมกล้องไหน (ภาษาอังกฤษ)","action":"มือ/คนทำอะไรกับสินค้า","line_style":"ช็อตนี้พูดแนวไหน (อธิบาย ไม่ต้องยกคำพูด)","text":"ตัวหนังสือบนจอแนวไหน"}],"ending":"ปิดท้ายยังไง","pacing":"ตัดเร็ว/ช้า กี่วิต่อช็อต"}`, [small], 240000);
+}
 
 // พากย์ 1 ประโยคด้วย F5 ในเครื่อง (ตัวสำรองตอน edge-tts ล่ม) เสียงหญิง = serหญิง005 (kidza เลือก 12 พ.ย.) · ไม่มี F5 → false
 async function f5Say(text, mp3, gender) {
@@ -135,6 +150,16 @@ class ShopeePipeline extends Pipeline {
     }
     this.emit('asset', { kind: 'cast', file: p.product.file, name: 'สินค้า' });
 
+    // คลิปต้นแบบ: แกะครั้งเดียวต่อโปรเจกต์ · จำนวนฉากตามต้นแบบ (4–10) · พังไม่หยุดงาน ทำแบบปกติแทน
+    if (p.refUrl && !p.ref) {
+      try {
+        p.ref = await refAnalyze(p.refUrl, dir, this.log);
+        if (p.ref.shots?.length) p.scenes = Math.max(4, Math.min(10, p.ref.shots.length));
+        this.save();
+        this.log(`📐 ต้นแบบ: ${p.ref.summary || ''} (${p.ref.shots?.length || 0} ช็อต)`);
+      } catch (e) { this.log('⚠️ แกะคลิปต้นแบบไม่ได้ ทำแบบปกติ: ' + e.message.slice(0, 200)); }
+    }
+
     for (let n = 1; n <= p.clips; n++) {
       const C = (p.episodes[n - 1] ||= { ep: n });
       if (C.final && fs.existsSync(C.final)) continue;
@@ -241,7 +266,10 @@ ${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza
 - line แต่ละฉากต่อกันเป็นเรื่องเดียวลื่นๆ ไม่ขึ้นต้นใหม่ทุกฉาก
 - image_prompt ทุกฉาก: มุมก้มมองโต๊ะจากสายตาคนถ่าย มือเข้ามาจากขอบล่าง ห้ามมีคนยืนในเฟรม ห้ามมีไอคอน/ป้าย/หน้าจอ/ตัวหนังสือ (ฉากชวนกดตะกร้าให้ถือสินค้าโชว์เฉยๆ)
 ` : ''}- ปิดท้ายแบบธรรมชาติ (kidza 14 พ.ย.): line ห้ามมีเสียงหัวเราะหรือคำหัวเราะ (555 ฮ่าๆ อิอิ คิกคิก) · motion ฉากสุดท้ายใช้ยิ้มบางๆ พยักหน้า ยกนิ้วโป้ง หรือยกสินค้าโชว์กล้อง ห้าม laughing
-- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
+${p.ref ? `- ทำตามคลิปต้นแบบที่ดังแล้ว (สำคัญกว่าข้อแนวทางด้านบน ยกเว้นข้อห้าม): ใช้ฮุก มุมกล้อง ลำดับช็อต จังหวะ โทน และแบบปิดท้ายเดียวกัน แต่เป็นสินค้าเรา ห้ามลอกคำพูดตรงๆ
+  ฉากที่ k ของเรา = ช็อตที่ k ของต้นแบบ (image_prompt/motion ตาม shot/action, line ตาม line_style, overlay ตาม text)
+  ต้นแบบ: ${JSON.stringify(p.ref)}
+` : ''}- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
 - line = บทพูดไทยไม่เกิน 20 คำ, overlay = คำโปรยตัวใหญ่บนจอ 2-5 คำ
 - image_prompt และ motion เป็นภาษาอังกฤษ ฉากทุกฉากอยู่ที่ ${T.scene[p.scene]}
 - product_look = บรรยายหน้าตาสินค้าในรูปเป็นภาษาอังกฤษละเอียดพอให้วาดซ้ำได้, presenter = หน้าตาผู้แสดงภาษาอังกฤษ (ไม่มีให้ใส่ "")
@@ -321,4 +349,4 @@ ${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza
   }
 }
 
-module.exports = { ShopeePipeline, fetchProduct, STAGES };
+module.exports = { ShopeePipeline, fetchProduct, STAGES, refAnalyze };
