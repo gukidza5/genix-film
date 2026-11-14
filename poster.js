@@ -82,7 +82,8 @@ function fbCaption(caption, seed, hasLink) {
 // ติ๊กไม่ได้ = log เตือนแล้วโพสต์ต่อ
 async function aiLabel(page, pf, log) {
   const sw = pf === 'facebook'
-    ? page.locator('[role=switch]').filter({ hasText: /ป้าย AI|AI label|AI info/i }).first()
+    // บางเพจคำ "เพิ่มป้าย AI" อยู่นอกตัวสวิตช์ (14 พ.ย.) → หา div ชั้นในสุดที่มีทั้งคำและสวิตช์
+    ? page.locator('div').filter({ hasText: /ป้าย AI|AI label|AI info/i }).filter({ has: page.locator('[role=switch]') }).last().locator('[role=switch]').first()
     : page.locator('[data-e2e="aigc_container"] .Switch__content').first();
   try {
     // TikTok: สวิตช์ซ่อนใต้ "Show more"
