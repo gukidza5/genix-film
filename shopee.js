@@ -176,7 +176,9 @@ class ShopeePipeline extends Pipeline {
         // วิดีโอ: ComfyUI ในเครื่องเป็นค่าเริ่มต้น (9 พ.ย. Meta เงียบฉากละ 10 นาทีไม่ได้สักฉาก) · zoom = ภาพนิ่งซูม ไม่เจนเลย
         if ((p.video || 'comfy') === 'zoom') { s.video = null; this.save(); continue; }
         if ((p.video || 'comfy') === 'comfy') {
-          s.video = s.frame ? await this.comfyRun({ kind: 'video', motion: `${s.motion}. ${T.style[p.style]}`, image: s.frame, seconds: 4, out: this.f(`clip${n}`, `s${i + 1}.mp4`) }) : null;
+          // ฉากสุดท้าย: ยิ้ม/ทำท่า ไม่หัวเราะ (kidza 14 พ.ย.)
+          const end = i === C.scenes.length - 1 ? ' Ends with a gentle closed-mouth smile or small nod, calm and natural, not laughing.' : '';
+          s.video = s.frame ? await this.comfyRun({ kind: 'video', motion: `${s.motion}.${end} ${T.style[p.style]}`, image: s.frame, seconds: 4, out: this.f(`clip${n}`, `s${i + 1}.mp4`) }) : null;
           this.save();
           continue;
         }
@@ -238,7 +240,8 @@ ${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza
 - ทุกฉากเห็นแค่มือกำลังทำอะไรกับสินค้าจริงๆ (แกะกล่อง ประกอบ ใส่ของ เปิด-ปิด กด ลองใช้ เทียบก่อน-หลัง) ห้ามเห็นหน้า แต่ละฉากเป็นการกระทำคนละอย่าง ไม่ใช่ถือสินค้าเฉยๆ
 - line แต่ละฉากต่อกันเป็นเรื่องเดียวลื่นๆ ไม่ขึ้นต้นใหม่ทุกฉาก
 - image_prompt ทุกฉาก: มุมก้มมองโต๊ะจากสายตาคนถ่าย มือเข้ามาจากขอบล่าง ห้ามมีคนยืนในเฟรม ห้ามมีไอคอน/ป้าย/หน้าจอ/ตัวหนังสือ (ฉากชวนกดตะกร้าให้ถือสินค้าโชว์เฉยๆ)
-` : ''}- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
+` : ''}- ปิดท้ายแบบธรรมชาติ (kidza 14 พ.ย.): line ห้ามมีเสียงหัวเราะหรือคำหัวเราะ (555 ฮ่าๆ อิอิ คิกคิก) · motion ฉากสุดท้ายใช้ยิ้มบางๆ พยักหน้า ยกนิ้วโป้ง หรือยกสินค้าโชว์กล้อง ห้าม laughing
+- ห้ามอ้างสรรพคุณเกินจริง ห้ามเคลมรักษาโรค ห้ามแต่งตัวเลขยอดขาย/รีวิว
 - line = บทพูดไทยไม่เกิน 20 คำ, overlay = คำโปรยตัวใหญ่บนจอ 2-5 คำ
 - image_prompt และ motion เป็นภาษาอังกฤษ ฉากทุกฉากอยู่ที่ ${T.scene[p.scene]}
 - product_look = บรรยายหน้าตาสินค้าในรูปเป็นภาษาอังกฤษละเอียดพอให้วาดซ้ำได้, presenter = หน้าตาผู้แสดงภาษาอังกฤษ (ไม่มีให้ใส่ "")
@@ -257,6 +260,8 @@ ${p.style === 'review' ? `- แนวรีวิวเล่าเอง (kidza
       if (fs.existsSync(out)) continue;
 
       let audio = null, len = 3.5;
+      // คำหัวเราะในบท เสียงพากย์อ่านออกมาเป็นเสียงหัวเราะ/ห้าห้าห้า → ตัดทิ้งก่อนพากย์และก่อนขึ้นซับ (kidza 14 พ.ย.)
+      if (s.line) s.line = s.line.replace(/\s*(5{3,}(?![\d.,]|\s*(บาท|฿|ชิ้น|ml|g))|(ฮ่า|ฮา|อิ|คิก|แฮ่|เอิ้ก)(\s*ๆ|\s*\3)+|\[laugh\w*\])\s*/gi, ' ').trim();
       if (p.voice !== 'none' && s.line) {
         audio = this.f(`clip${n}`, 'cut', `${tag}.mp3`);
         // เสียงหญิง Premwadee ฝั่ง Microsoft ตอบ NoAudioReceived แบบสุ่ม (12 พ.ย. พังติดกันทั้งชั่วโมง ฉากเงียบ) → ลอง 6 รอบ ไม่ได้ใช้ F5 เสียงหญิงในเครื่อง
